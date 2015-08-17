@@ -1,0 +1,40 @@
+organisation_id,schema,programme,category,canonical,remarks
+TSWN,1,general,蔬菜,Leafy Veg,previously Fresh Veg
+TSWN,1,general,瓜類,Ground Veg,"Heavy Veg (including root veg, gourds, melons)"
+TSWN,1,general,豆品,Soy Products,Fresh
+TSWN,1,general,生果,Fruit,Fresh
+TSWN,1,general,麵包,Bread,Fresh
+TSWN,1,general,乾糧,Staple,Packaged
+TSWN,1,general,急凍,Frozen,Packaged
+TSWN,1,general,調味品,Condiment,Packaged
+TSWN,1,general,飲品,Drinks,Packaged
+TSWN,1,general,糖水,Fresh Other,
+TSWN,1,general,涼茶,Fresh Other,double?
+TSWN,1,general,粉,Fresh Other,
+TSWN,1,general,糕點,Fresh Other,
+TSWN,1,general,鴻福堂,Packaged Other,Hung Fook Tong
+TSWN,1,general,飯,Fresh Other,cooked food
+TSWN,1,general,腸粉,Fresh Other,
+TSWN,1,general,兒童發展中心,Fresh Other,cooked food
+TSWN,1,general,蛋,Fresh Other,
+TSWN,1,general,奶粉,Staple,
+TSWN,1,general,麵,Fresh Other,cooked food
+TSWN,1,general,內臟,Fresh Other,
+TSWN,1,general,咸魚,Condiment,
+TSWN,1,general,涼荼,Fresh Other,double?
+TSWN,1,general,湯包,Packaged Other,
+TSWN,1,general,糉,Fresh Other,cooked food
+TSWN,1,general,海帶,Packaged Other,dried food
+TSWN,1,general,麵根,Pacakaged Other,dried food
+TSWN,1,general, 蛋,Fresh Other,eggs
+TSWN,1,general,涼茶 ,Fresh Other,double?
+TSWN,1,general,肉,Fresh Other,
+TSWN,1,general,海鮮,Fresh Other,
+TSWN,1,general,包點,Fresh Other,cooked food
+TSWN,1,general,月餅,Packaged Other,
+TSWN,1,general,飯商1,Fresh Other,cooked food
+TSWN,1,general,粥,Fresh Other,cooked food
+TSWN,1,general,發菜,Pacakaged Other,dried food
+TSWN,1,general,鹼水,Packaged Other,
+TSWN,1,general,腐竹,Pacakaged Other,dried food
+TSWN,1,general,魚蛋,Fresh Other,

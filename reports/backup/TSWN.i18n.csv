@@ -1,0 +1,58 @@
+organisation_id,schema,programme,zh,en,remarks
+TSWN,1,general,蔬菜,Leafy Veg,previously Fresh Veg
+TSWN,1,general,瓜類,Ground Veg,"Heavy Veg (including root veg, gourds, melons)"
+TSWN,1,general,豆品,Soy Products, Fresh (consumed within 3 days)
+TSWN,1,general,生果,Fruit, Fresh (consumed within 3 days)
+TSWN,1,general,麵包,Bread, Fresh (consumed within 3 days)
+TSWN,1,general,乾糧,Staple,Packaged
+TSWN,1,general,急凍,Frozen,Packaged
+TSWN,1,general,調味品,Condiment,Packaged
+TSWN,1,general,飲品,Drinks,Packaged
+TSWN,1,general,糖水,Dessert,Fresh Other
+TSWN,1,general,涼茶,Herbal Tea,Fresh Other
+TSWN,1,general,粉,Thick Noodles,Fresh Other - cooked food
+TSWN,1,general,糕點,Cakes,Fresh Other - cooked food
+TSWN,1,general,鴻福堂,Hung Fook Tong,Packaged Other - Chain Store
+TSWN,1,general,飯,Rice,Fresh Other - cooked food
+TSWN,1,general,腸粉,Cheung Fun,Fresh Other - cooked food
+TSWN,1,general,兒童發展中心,?,Fresh Other - cooked food
+TSWN,1,general,蛋,Eggs,Fresh Other
+TSWN,1,general,奶粉,Milk Powder,Staple
+TSWN,1,general,麵,Noodles,Fresh Other - cooked food
+TSWN,1,general,內臟,Innards,Fresh Other
+TSWN,1,general,咸魚,Salted Fish,Condiment
+TSWN,1,general,涼荼,Herbal Tea,Fresh Other
+TSWN,1,general,湯包,Soup Pack,Packaged Other
+TSWN,1,general,糉,Rice Dumplings,Fresh Other - cooked food
+TSWN,1,general,海帶,Dried seaweed,Packaged Other
+TSWN,1,general,麵根,Dried Gluten,Pacakaged Other
+TSWN,1,general, 蛋,Eggs,Fresh Other
+TSWN,1,general,涼茶 ,Herbal Tea,Fresh Other
+TSWN,1,general,肉,Meat,Fresh Other
+TSWN,1,general,海鮮,Seafood,Fresh Other
+TSWN,1,general,包點,Buns,Fresh Other - cooked food
+TSWN,1,general,月餅,Moon Cake,Packaged Other
+TSWN,1,general,飯商1,?,Fresh Other - cooked food
+TSWN,1,general,粥,Congee,Fresh Other
+TSWN,1,general,發菜,Dried Seaweed,Pacakaged Other
+TSWN,1,general,鹼水,?,Packaged Other
+TSWN,1,general,腐竹,Dried Soy Sheets,Pacakaged Other
+TSWN,1,general,魚蛋,Fish Balls,Fresh Other
+TSWN,1,general,湯包,Soup Pack,doubles
+TSWN,1,general,包點,,doubles
+TSWN,1,general,涼茶 ,,doubles
+TSWN,1,general,內臟,,doubles
+TSWN,1,general, 蛋,,doubles
+TSWN,1,general,發菜,,doubles
+TSWN,1,general,麵,,doubles
+TSWN,1,general,月餅,,doubles
+TSWN,1,general,鹼水,,doubles
+TSWN,1,general,魚蛋,,doubles
+TSWN,1,general,糉,,doubles
+TSWN,1,general,涼荼,,doubles
+TSWN,1,general,糕點,,doubles
+TSWN,1,general,肉,,doubles
+TSWN,1,general,腸粉,,doubles
+TSWN,1,general,麵根,,doubles
+TSWN,1,general,海帶,,doubles
+TSWN,1,general,奶粉,,doubles
