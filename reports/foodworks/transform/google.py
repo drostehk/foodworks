@@ -4,8 +4,8 @@ __author__ = 'io'
 
 import datetime
 import pandas as pd
-from ..connector.google import GoogleSourceClient
-from ..credentials import getGoogleCredentials
+from foodworks.connector import GoogleSourceClient
+from foodworks.credentials import getGoogleCredentials
 
 class CanonicalTransformer(object):
 
@@ -57,3 +57,10 @@ class GoogleToCanonical(CanonicalTransformer):
         for sheet, code in self.ss.collect_terms_sheets():
             df = pd.DataFrame(sheet)
             df.to_csv(self.csv_path + self.org + '.' + code + '.csv', encoding="utf-8", index=False, header=False)
+
+    def donors_sheets_to_csv(self, dest='../../Data/Canonical/'):
+        if self.stage == 'Collection':
+            df = self.ss.parse_cover_sheet()
+            df.to_csv(self.csv_path + self.org + '.donors.csv', encoding="utf-8", index=False)
+        else:
+            raise NotImplementedError

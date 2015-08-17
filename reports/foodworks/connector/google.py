@@ -8,7 +8,7 @@ from gspread import Client
 from gspread.ns import _ns
 from gspread.models import Spreadsheet
 from gspread.exceptions import SpreadsheetNotFound
-from ..credentials import getGoogleCredentials
+from foodworks.credentials import getGoogleCredentials
 import seaborn
 
 
@@ -81,7 +81,12 @@ class GoogleSourceSheet(Spreadsheet):
 
     def parse_cover_sheet(self):
         if self.stage in ['Collection', 'Distribution']:
-            pass
+            ws = self.get_worksheet(0)
+            values = ws.get_all_values()
+            cover = pd.DataFrame(values)
+            cover.columns = cover.iloc[0]
+            cover = cover.ix[1:]
+            return cover
         elif self.stage == 'Processing':
             pass
 
