@@ -73,7 +73,17 @@ class GoogleSourceSheet(Spreadsheet):
         self.chinese_weekdays = [u'星期一', u'星期二', u'星期三', u'星期四', u'星期五', u'星期六', u'星期日']
         self.chinese_type = u'其他'
         self.chinese_volume = u'其他 (公斤)'
-        self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
+        
+        if(stage == "Collection"):
+            self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
+        elif(stage == "Distribution"):
+            self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+        elif(stage == "Processing"):
+            ##self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
+            raise NotImplementedError
+        else:
+            raise NotImplementedError
+
         self.df = pd.DataFrame(columns=self.std_cols)
 
         self.set_schema()
@@ -102,8 +112,9 @@ class GoogleSourceSheet(Spreadsheet):
     def parse_meta_sheet(self):
         ws = self.worksheet('meta')
         metadata = dict(zip(ws.row_values(1), ws.row_values(2)))
-        self.programme = metadata['programme']
         self.schema_version = metadata['schema_version']
+        if self.stage == 'Collection':
+            self.programme = metadata['programme']
 
     def set_schema(self):
         ws = self.worksheet('1')
@@ -113,6 +124,10 @@ class GoogleSourceSheet(Spreadsheet):
             schema_items = schema_items + col_headers[col_headers.index(self.chinese_volume)+1:-2]
             self.col_headers = col_headers
             self.schema = schema_items
+        elif self.stage == 'Distribution':
+            schema_items = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+            self.col_headers = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+            self.schema = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
         else:
             raise NotImplementedError
 
@@ -222,7 +237,45 @@ class GoogleSourceSheet(Spreadsheet):
         raise NotImplementedError
 
     def parse_distribution(self):
-        raise NotImplementedError
+        wss = self.collect_week_sheets()
+        for ws in wss:
+            self.parse_dist_weeksheet(ws)
+
+        '''
+        self.df.datetime = pd.to_datetime(self.df.datetime)
+
+        terms = self.df.columns[4:].tolist()
+
+        self.create_translations_keys(terms)
+        self.create_mappings_keys(terms)
+        self.create_units_keys(terms)
+        '''
+        return self.df
+
+    def parse_dist_weeksheet(self, ws):
+        header_offset = 2
+        values = ws.get_all_values()
+        collection = pd.DataFrame(values)
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Record)')
+        #print(collection.iloc[header_offset:, 0])
+
+        if(len(collection.index) > header_offset):
+            timestamps = collection.iloc[header_offset:, 0]
+            raw_df = collection.ix[header_offset:, :].copy()
+            raw_df.columns = self.schema
+            loc = len(self.df)
+
+            #timestamps = timestamps.apply(self.weekday_to_date, collection.iloc[0,1], )
+            print(raw_df)
+            print(timestamps)
+            print(collection.iloc[0,1])
+            #print(self.weekday_to_date(collection.iloc[0,1], timestamps[2]))
+            tempList = []
+            for ridx in timestamps.index.tolist():
+                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                tempList = tempList + [timestamp]
+            raw_df['datetime'] = tempList
+            self.df = self.df.append(raw_df,ignore_index = True)    
 
 
 def _is_week_number(title):

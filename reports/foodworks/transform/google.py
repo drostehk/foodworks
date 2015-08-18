@@ -64,3 +64,19 @@ class GoogleToCanonical(CanonicalTransformer):
             df.to_csv(self.csv_path + self.org + '.donors.csv', encoding="utf-8", index=False)
         else:
             raise NotImplementedError
+
+    def beneficiary_sheets_to_csv(self, dest='../../Data/Canonical/'):
+        if self.stage == 'Distribution':
+            df = self.ss.parse_cover_sheet()
+            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.beneficiary.csv', encoding="utf-8", index=False)
+        else:
+            raise NotImplementedError
+
+    def distribution_sheets_to_csv(self, dest='../../Data/Canonical/'):
+        if self.stage == 'Distribution':
+            print(self.stage)
+            df = self.ss.parse_distribution()
+            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.distribution.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        else:
+            raise NotImplementedError
+

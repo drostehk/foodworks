@@ -11,8 +11,12 @@ from foodworks.transform import GoogleToCanonical
 #gc = GoogleSourceClient.connect()
 #ss = gc.open_source('TSWN','Collection',2015)
 
-ss = GoogleToCanonical('TSWN', 'Collection', 2014)
-ss.donors_sheets_to_csv()
+#ss = GoogleToCanonical('TSWN', 'Collection', 2014)
+#ss.collection_sheets_to_csv()
+
+ss = GoogleToCanonical('TSWN', 'Distribution', 2014)
+ss.distribution_sheets_to_csv()
+#ss.beneficiary_sheets_to_csv()
 
 #print(ss.parse_cover_sheet())
 # gc = GoogleSourceClient.connect()
