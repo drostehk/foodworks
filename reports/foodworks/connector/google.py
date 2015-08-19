@@ -79,8 +79,7 @@ class GoogleSourceSheet(Spreadsheet):
         elif(stage == "Distribution"):
             self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
         elif(stage == "Processing"):
-            ##self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
-            raise NotImplementedError
+            self.std_cols = ['datetime', 'na_1', 'na_2','compost', 'disposal', 'storage']
         else:
             raise NotImplementedError
 
@@ -90,15 +89,22 @@ class GoogleSourceSheet(Spreadsheet):
         self.parse_meta_sheet()
 
     def parse_cover_sheet(self):
-        if self.stage in ['Collection', 'Distribution']:
+        if self.stage in ['Collection', 'Distribution', 'Processing']:
             ws = self.get_worksheet(0)
             values = ws.get_all_values()
             cover = pd.DataFrame(values)
             cover.columns = cover.iloc[0]
             cover = cover.ix[1:]
             return cover
-        elif self.stage == 'Processing':
-            pass
+        '''    
+                                    elif self.stage == 'Processing':
+                                        ws = self.get_worksheet(0)
+                                        values = ws.get_all_values()
+                                        cover = pd.DataFrame(values)
+                                        cover.columns = cover.iloc[0]
+                                        cover = cover.ix[1:]
+                                        return cover
+        '''    
 
     def collect_week_sheets(self):
         return [ws for ws in self.worksheets() if _is_week_number(ws.title)]
@@ -125,9 +131,13 @@ class GoogleSourceSheet(Spreadsheet):
             self.col_headers = col_headers
             self.schema = schema_items
         elif self.stage == 'Distribution':
-            schema_items = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
-            self.col_headers = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
-            self.schema = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+            schema_items = self.std_cols
+            self.col_headers = self.std_cols
+            self.schema = self.std_cols
+        elif self.stage == 'Processing':
+            schema_items = self.std_cols
+            self.col_headers = self.std_cols
+            self.schema = self.std_cols
         else:
             raise NotImplementedError
 
@@ -234,22 +244,15 @@ class GoogleSourceSheet(Spreadsheet):
 
 
     def parse_processing(self):
-        raise NotImplementedError
+        wss = self.collect_week_sheets()
+        for ws in wss:
+            self.parse_processing_weeksheet(ws)
+        return self.df
 
     def parse_distribution(self):
         wss = self.collect_week_sheets()
         for ws in wss:
             self.parse_dist_weeksheet(ws)
-
-        '''
-        self.df.datetime = pd.to_datetime(self.df.datetime)
-
-        terms = self.df.columns[4:].tolist()
-
-        self.create_translations_keys(terms)
-        self.create_mappings_keys(terms)
-        self.create_units_keys(terms)
-        '''
         return self.df
 
     def parse_dist_weeksheet(self, ws):
@@ -264,12 +267,30 @@ class GoogleSourceSheet(Spreadsheet):
             raw_df = collection.ix[header_offset:, :].copy()
             raw_df.columns = self.schema
             loc = len(self.df)
+            tempList = []
+            for ridx in timestamps.index.tolist():
+                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                tempList = tempList + [timestamp]
+            raw_df['datetime'] = tempList
+            self.df = self.df.append(raw_df,ignore_index = True)    
 
-            #timestamps = timestamps.apply(self.weekday_to_date, collection.iloc[0,1], )
+    def parse_processing_weeksheet(self, ws):
+        header_offset = 2
+        values = ws.get_all_values()
+        collection = pd.DataFrame(values)
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Record)')
+        #print(collection.iloc[header_offset:, 0])
+
+        if(len(collection.index) > header_offset):
+            timestamps = collection.iloc[header_offset:, 0]
+            raw_df = collection.ix[header_offset:, :].copy()
+            print(raw_df.columns.values)
+            raw_df.columns = self.schema
+            loc = len(self.df)
+
             print(raw_df)
             print(timestamps)
             print(collection.iloc[0,1])
-            #print(self.weekday_to_date(collection.iloc[0,1], timestamps[2]))
             tempList = []
             for ridx in timestamps.index.tolist():
                 timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])

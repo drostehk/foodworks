@@ -35,6 +35,9 @@ def fixAllmth(the_series):
 			the_list = the_list + [0]
 	return the_list
 
+def getList(the_df, target_element):
+	return the_df[the_df.element == target_element].ix[: , 1:].values[0]
+
 def genRow(the_name, the_series):
 	the_series = fixAllmth(the_series)
 	return [the_name] + the_series
@@ -45,6 +48,8 @@ def genReport(ngo, year):
 	donorsfile_name = ngo + '.donors.csv'
 	distfile_name = ngo + '.' + str(year) + '.distribution.csv'
 	benffile_name = ngo + '.beneficiary.csv'
+	procfile_name = ngo + '.' + str(year) + '.processing.csv'
+	finfile_name = ngo + '.' + str(year) + '.finance.csv'
 
 	# Load the data in
 	df = pd.read_csv(folder_dir + ngo + '/' + datafile_name)
@@ -52,7 +57,17 @@ def genReport(ngo, year):
 	df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
 	df_dist = pd.read_csv(folder_dir + ngo + '/' + distfile_name)
 	df_benf = pd.read_csv(folder_dir + ngo + '/' + benffile_name)
+	df_proc = pd.read_csv(folder_dir + ngo + '/' + procfile_name)
+	df_fin = pd.read_csv(folder_dir + ngo + '/' + finfile_name)
 
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv')])
+
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+		df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.distribution.csv')])
+
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+		df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.processing.csv')])
 	
 	## Collection
 	# Reshape the dataframe
@@ -73,11 +88,9 @@ def genReport(ngo, year):
 	df_merge['year'] = df_merge.apply(getYear, axis=1)
 	df_merge['month'] = df_merge.apply(getMonth, axis=1)
 	df_merge['day'] = df_merge.apply(getDay, axis=1)
-	df_merge[df_merge['year'] > year].month = 12
-	df_merge[df_merge['year'] < year].month = 1
+	df_merge = df_merge[df_merge['year'] == year]
 
 	## Distribution
-	print(df_dist)
 	df_dist['datetime'] = pd.to_datetime(df_dist['datetime'])
 	df_dist['year'] = df_dist.apply(getYear, axis=1)
 	df_dist['month'] = df_dist.apply(getMonth, axis=1)
@@ -85,10 +98,15 @@ def genReport(ngo, year):
 	df_dist = df_dist[df_dist['year'] == year]
 	## TODO: Need to check for pervious/next year file
 
-	print(genRow('Total beneficiaries ', df_dist.groupby('month').Distribution_Count.agg(['sum'])['sum']))
+	## Processing
+	df_proc['datetime'] = pd.to_datetime(df_proc['datetime'])
+	df_proc['year'] = df_proc.apply(getYear, axis=1)
+	df_proc['month'] = df_proc.apply(getMonth, axis=1)
+	df_proc['day'] = df_proc.apply(getDay, axis=1)
+	df_proc = df_proc[df_proc['year'] == year]
 
-	#print(df_benf)
-	#df_benf
+	df_fin.columns = ['month', 'income', 'expenditure']
+	df_fin['month_num'] = (df_fin.index + 1)
 
 	# Empty DF for report
 	columns = ['element'] + map(str, range(1,13))
@@ -97,16 +115,38 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = genRow('Total volume of food collected (kg)', df_merge.groupby('month').value.agg(['sum'])['sum'])
 	df_report.loc[len(df_report)+1] = genRow('Total volume of fresh food (kg)', df_merge[df_merge['isFresh'] == True].groupby('month').value.agg(['sum'])['sum'])
 	df_report.loc[len(df_report)+1] = genRow('Total volume of packaged food (kg)', df_merge[df_merge['isFresh'] == False].groupby('month').value.agg(['sum'])['sum'])
+
+
 	df_report.loc[len(df_report)+1] = genRow('Number of food rescue days/ month', df_merge.groupby('month').day.nunique())
 	df_report.loc[len(df_report)+1] = genRow('Total Donors Count', df_merge.groupby('month').donor.agg(['count'])['count'])
 	df_report.loc[len(df_report)+1] = genRow('Unique Donors Count', df_merge.groupby('month').donor.nunique())
-	df_report.loc[len(df_report)+1] = genRow('Unique Donors Count', df_merge.groupby('month').donor.nunique())
+	
 	for donor in pd.unique(df_merge['donor_category']):
 		df_report.loc[len(df_report)+1] = genRow(donor.title() + ' (kg)', df_merge[df_merge['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Total beneficiaries', df_dist.groupby('month').Distribution_Count.agg(['sum'])['sum'])
+
+	df_report.loc[len(df_report)+1] = genRow('Compost volume (kg)', df_proc.groupby('month').compost.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Disposal volume (kg)', df_proc.groupby('month').disposal.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Storage volume (kg)', df_proc.groupby('month').storage.agg(['sum'])['sum'])
+
+	df_report.loc[len(df_report)+1] = genRow('Donation/ Income ($)', df_fin.groupby('month').income.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Total expenditure ($)', df_fin.groupby('month').income.agg(['sum'])['sum'])
+
+	df_report.loc[len(df_report)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Storage volume (kg)'))]	
+	df_report.loc[len(df_report)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df_report, 'Total distribution volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
+	df_report.loc[len(df_report)+1] = ['Compost Percentage (%)'] + [e / a for e, a in zip(getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
+	df_report.loc[len(df_report)+1] = ['Disposal Percentrage (%)'] + [f / a for f, a in zip(getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
+	df_report.loc[len(df_report)+1] = ['Storage Percentage (%)'] + [g / a for g, a in zip(getList(df_report, 'Storage volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
+	df_report.loc[len(df_report)+1] = ['Average amount of food rescued/ day (kg)'] + [a / h for a , h in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Number of food rescue days/ month'))]
+	df_report.loc[len(df_report)+1] = ['Average beneficiaries/day '] + [a / h for a , h in zip(getList(df_report, 'Total beneficiaries'), getList(df_report, 'Number of food rescue days/ month'))]
+	df_report.loc[len(df_report)+1] = ['Average volume of food distributed/ per person  / day (kg)'] + [i / d / h for i , d, h in zip(getList(df_report, 'Total distribution volume (kg)'), getList(df_report, 'Number of food rescue days/ month'), getList(df_report, 'Total beneficiaries'))]
+	df_report.loc[len(df_report)+1] = ['Average cost/ beneficiary ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total beneficiaries'))]
+
+	df_report.loc[len(df_report)+1] = ['Average cost/kg of rescued food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total volume of food collected (kg)'))]
+	df_report.loc[len(df_report)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total distribution volume (kg)'))]
 
 	return(df_report)
 
-#print(genReport('TSWN', 2014))
-genReport('TSWN', 2014)
+print(genReport('TSWN', 2014))
 #genReport('TSWN', 2015)
 

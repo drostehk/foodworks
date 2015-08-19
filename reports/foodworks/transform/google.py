@@ -80,3 +80,17 @@ class GoogleToCanonical(CanonicalTransformer):
         else:
             raise NotImplementedError
 
+    def finance_sheets_to_csv(self, dest='../../Data/Canonical/'):
+        if self.stage == 'Processing':
+            df = self.ss.parse_cover_sheet()
+            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.finance.csv', encoding="utf-8", index=False)
+        else:
+            raise NotImplementedError
+
+    def processing_sheets_to_csv(self, dest='../../Data/Canonical/'):
+        if self.stage == 'Processing':
+            print(self.stage)
+            df = self.ss.parse_processing()
+            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.processing.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        else:
+            raise NotImplementedError
