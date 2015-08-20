@@ -42,6 +42,9 @@ def genRow(the_name, the_series):
 	the_series = fixAllmth(the_series)
 	return [the_name] + the_series
 
+def getMonthNum(element):
+	return ([i for i, x in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Apr', 'Sep', 'Oct', 'Nov', 'Dec']) if x == element][0] + 1)
+
 def genReport(ngo, year):
 	datafile_name = ngo + '.' + str(year) + '.csv'
 	mapfile_name = ngo + '.map.csv'
@@ -60,13 +63,13 @@ def genReport(ngo, year):
 	df_proc = pd.read_csv(folder_dir + ngo + '/' + procfile_name)
 	df_fin = pd.read_csv(folder_dir + ngo + '/' + finfile_name)
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
 		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv')])
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
 		df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.distribution.csv')])
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv'):
+	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
 		df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.processing.csv')])
 	
 	## Collection
@@ -129,8 +132,8 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = genRow('Disposal volume (kg)', df_proc.groupby('month').disposal.agg(['sum'])['sum'])
 	df_report.loc[len(df_report)+1] = genRow('Storage volume (kg)', df_proc.groupby('month').storage.agg(['sum'])['sum'])
 
-	df_report.loc[len(df_report)+1] = genRow('Donation/ Income ($)', df_fin.groupby('month').income.agg(['sum'])['sum'])
-	df_report.loc[len(df_report)+1] = genRow('Total expenditure ($)', df_fin.groupby('month').income.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Donation/ Income ($)', df_fin.groupby('month_num').income.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Total expenditure ($)', df_fin.groupby('month_num').income.agg(['sum'])['sum'])
 
 	df_report.loc[len(df_report)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Storage volume (kg)'))]	
 	df_report.loc[len(df_report)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df_report, 'Total distribution volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
@@ -147,6 +150,17 @@ def genReport(ngo, year):
 
 	return(df_report)
 
+'''
+def report_to_csv(self, dest='../../Data/Canonical/'):
+    if self.stage == 'Processing':
+        print(self.stage)
+        df = self.ss.parse_processing()
+        df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.processing.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
+    else:
+        raise NotImplementedError
+'''
 print(genReport('TSWN', 2014))
+
+
 #genReport('TSWN', 2015)
 
