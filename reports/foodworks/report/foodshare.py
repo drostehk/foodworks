@@ -156,6 +156,7 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total distribution volume (kg)'))]
 
 	df_report['Total'] = df_report.ix[:, 1:13].sum(axis=1)
+	df_report['Average'] = df_report.ix[:, 1:13].mean(axis=1)
 
 	return(df_report)
 
@@ -166,8 +167,6 @@ def report_to_excel(ngo, year, dest=''):
 	genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
 	print('Done!')
 
-
-#print(genReport('TSWN', 2014))
 report_to_excel('TSWN', 2014, '')
 
 
