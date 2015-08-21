@@ -45,6 +45,13 @@ def genRow(the_name, the_series):
 def getMonthNum(element):
 	return ([i for i, x in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Apr', 'Sep', 'Oct', 'Nov', 'Dec']) if x == element][0] + 1)
 
+def getMonthDays(element, year):
+	monrh_days = [31, 28, 31, 30, 31, 30, 31, 30, 30, 31, 30, 31]
+	result = monrh_days[element - 1]
+	if year % 4 == 0 & element == 2:
+		result = 29
+	return result
+
 def genReport(ngo, year):
 	datafile_name = ngo + '.' + str(year) + '.csv'
 	mapfile_name = ngo + '.map.csv'
@@ -148,18 +155,20 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = ['Average cost/kg of rescued food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total volume of food collected (kg)'))]
 	df_report.loc[len(df_report)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total distribution volume (kg)'))]
 
+	df_report['Total'] = df_report.ix[:, 1:13].sum(axis=1)
+
 	return(df_report)
 
-'''
-def report_to_csv(self, dest='../../Data/Canonical/'):
-    if self.stage == 'Processing':
-        print(self.stage)
-        df = self.ss.parse_processing()
-        df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.processing.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
-    else:
-        raise NotImplementedError
-'''
-print(genReport('TSWN', 2014))
+
+def report_to_excel(ngo, year, dest=''):
+	file_dir = dest + ngo + '.' + str(year) + '.report.xlsx'
+	print('Report generating to: ' + file_dir)
+	genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
+	print('Done!')
+
+
+#print(genReport('TSWN', 2014))
+report_to_excel('TSWN', 2014, '')
 
 
 #genReport('TSWN', 2015)
