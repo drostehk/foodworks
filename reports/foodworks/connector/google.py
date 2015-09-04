@@ -77,7 +77,8 @@ class GoogleSourceSheet(Spreadsheet):
         if(stage == "Collection"):
             self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
         elif(stage == "Distribution"):
-            self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+            #self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
+            self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count']
         elif(stage == "Processing"):
             self.std_cols = ['datetime', 'na_1', 'na_2','compost', 'disposal', 'storage']
         else:
