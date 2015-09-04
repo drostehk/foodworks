@@ -71,13 +71,13 @@ def genReport(ngo, year):
 	df_fin = pd.read_csv(folder_dir + ngo + '/' + finfile_name)
 
 	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.csv')])
+		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv')])
 
 	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.distribution.csv')])
+		df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.distribution.csv')])
 
 	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + 1) + '.processing.csv')])
+		df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.processing.csv')])
 	
 	## Collection
 	# Reshape the dataframe
@@ -167,7 +167,7 @@ def report_to_excel(ngo, year, dest=''):
 	genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
 	print('Done!')
 
-report_to_excel('TSWN', 2014, '')
+report_to_excel('TSWN', 2015, '')
 
 
 #genReport('TSWN', 2015)

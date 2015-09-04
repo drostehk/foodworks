@@ -21,7 +21,7 @@ class GoogleSourceClient(Client):
         """Specify which data source to connect to"""
         super(GoogleSourceClient, self).__init__(auth)
 
-    def open_source(self, org, stage="Collection", year=datetime.datetime.now().year):
+    def open_source(self, org, stage="Collection", year=datetime.datetime.now().year, programme=""):
         """Opens a spreadsheet, returning a :class:`~foodworks.connectors.google.GoogleSourceSheet` instance.
 
         If there's more than one spreadsheet with same title the first one
@@ -33,7 +33,12 @@ class GoogleSourceClient(Client):
         # >>> gc = GoogleSourceClient.connect()
         # >>> ss = gc.open_source('TSWN','Collection',2015)
         """
-        ss_name = "{} - {} {} {}".format(self._ss_prefix, stage, org, year)
+
+        # Programme is optional and only used when NGOs split out their operations into multiple programmes
+        if programme is not "":
+            programme = '' + programme
+
+        ss_name = "{} - {} {} {}{}".format(self._ss_prefix, stage, org, year, programme)
         feed = self.get_spreadsheets_feed()
 
         for elem in feed.findall(_ns('entry')):
