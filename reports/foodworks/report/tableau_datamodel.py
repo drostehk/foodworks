@@ -229,6 +229,11 @@ def getAllMergeCsv():
 		df = pd.read_csv(file_,index_col=None)
 		list_.append(df)
 	frame = pd.concat(list_, ignore_index = True)
+
+	# Extract NGO name
+	s_ngo = lambda x: x.split("-")[0]
+	frame['ngo'] = frame.organisation_id.apply(s_ngo)
+
 	frame.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
 
@@ -324,13 +329,9 @@ def master_donor_address():
 	df = pd.merge(df, unique_loc, how='left', left_on=['location'], right_on=['location'])
 	df.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
+
+getAllMergeCsv()
 master_donor_address()
-
-
-
-
-
-
 
 
 
