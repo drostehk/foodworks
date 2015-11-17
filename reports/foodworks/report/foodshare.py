@@ -43,7 +43,7 @@ def genRow(the_name, the_series):
 	return [the_name] + the_series
 
 def getMonthNum(element):
-	return ([i for i, x in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Apr', 'Sep', 'Oct', 'Nov', 'Dec']) if x == element][0] + 1)
+	return ([i for i, x in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) if x == element][0] + 1)
 
 def getMonthDays(element, year):
 	monrh_days = [31, 28, 31, 30, 31, 30, 31, 30, 30, 31, 30, 31]
@@ -115,6 +115,8 @@ def genReport(ngo, year):
 	df_proc['day'] = df_proc.apply(getDay, axis=1)
 	df_proc = df_proc[df_proc['year'] == year]
 
+
+	##Fin
 	df_fin.columns = ['month', 'income', 'expenditure']
 	df_fin['month_num'] = (df_fin.index + 1)
 
@@ -140,7 +142,9 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = genRow('Storage volume (kg)', df_proc.groupby('month').storage.agg(['sum'])['sum'])
 
 	df_report.loc[len(df_report)+1] = genRow('Donation/ Income ($)', df_fin.groupby('month_num').income.agg(['sum'])['sum'])
-	df_report.loc[len(df_report)+1] = genRow('Total expenditure ($)', df_fin.groupby('month_num').income.agg(['sum'])['sum'])
+	df_report.loc[len(df_report)+1] = genRow('Total expenditure ($)', df_fin.groupby('month_num').expenditure.agg(['sum'])['sum'])
+
+	df_report = df_report.fillna(0)
 
 	df_report.loc[len(df_report)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Storage volume (kg)'))]	
 	df_report.loc[len(df_report)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df_report, 'Total distribution volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
@@ -158,16 +162,17 @@ def genReport(ngo, year):
 	df_report['Total'] = df_report.ix[:, 1:13].sum(axis=1)
 	df_report['Average'] = df_report.ix[:, 1:13].mean(axis=1)
 
-	return(df_report)
+	return(df_report.fillna(0))
 
 
-def report_to_excel(ngo, year, dest=''):
+def report_to_excel(ngo, year, dest='../../../../Report/'):
 	file_dir = dest + ngo + '.' + str(year) + '.report.xlsx'
 	print('Report generating to: ' + file_dir)
 	genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
 	print('Done!')
 
-report_to_excel('TSWN', 2015, '')
+#report_to_excel('TSWN', 2015)
+report_to_excel('PSC Kowloon City', 2015)
 
 
 #genReport('TSWN', 2015)
