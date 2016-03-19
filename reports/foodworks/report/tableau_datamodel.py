@@ -63,6 +63,16 @@ def getMonthDays(element, year):
 		result = 29
 	return result
 
+
+def merge_donor(ngo, year_list):
+	donorsmaster_name = ngo + '.donors.csv'
+	for year in year_list:
+		donorsfile_name = ngo + str(year) + '.donors.csv'
+		df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
+
+	return 0
+
+
 def genTableauCsv(ngo, year, isFoodwork = True):
 	## Set file name
 
@@ -70,7 +80,7 @@ def genTableauCsv(ngo, year, isFoodwork = True):
 	mapfile_name = ngo + '.map.csv'
 	donorsfile_name = ngo + '.donors.csv'
 	distfile_name = ngo + '.' + str(year) + '.distribution.csv'
-	benffile_name = ngo + '.beneficiary.csv'
+	benffile_name = ngo + '.' + str(year) + '.beneficiary.csv'
 	procfile_name = ngo + '.' + str(year) + '.processing.csv'
 	finfile_name = ngo + '.' + str(year) + '.finance.csv'
 
@@ -87,8 +97,10 @@ def genTableauCsv(ngo, year, isFoodwork = True):
 			df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.processing.csv')])
 
 	df = pd.read_csv(folder_dir + ngo + '/' + datafile_name)
-	df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
 	df_map = pd.read_csv(folder_dir + ngo + '/' + mapfile_name)
+
+	df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
+
 
 	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
 		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv')])
@@ -97,23 +109,25 @@ def genTableauCsv(ngo, year, isFoodwork = True):
 
 	## Collection
 	# Reshape the dataframe
-	df = pd.melt(df, id_vars=list(df.columns.values)[0:4], value_vars=list(df.columns.values)[4:])
-	df['datetime'] = pd.to_datetime(df['datetime'])
+	melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
+	rest_col = [x for x in list(df.columns.values) if x not in melt_head]
 
-	df = df.drop_duplicates()
+	df = pd.melt(df, id_vars=melt_head, value_vars=rest_col)
+	df['datetime'] = pd.to_datetime(df['datetime'])
 
 	df = df[~df[['value']].isnull().any(axis=1)]
 
 	df_map = df_map[df_map.organisation_id == ngo]
 
 	df_map = df_map[['category', 'canonical']]
+	df_map = df_map.drop_duplicates()
 	df_merge = pd.merge(df, df_map, how='left', left_on=['variable'], right_on=['category'])
 	df_merge = df_merge.drop('category', 1)
 
-	df_donors = df_donors[['name_zh', 'category', 'location']]
+	df_donors = df_donors[['id', 'name_zh', 'category', 'location']]
 	df_donors.rename(columns={'name_zh': 'name_zh', 'category': 'donor_category'}, inplace=True)
-	df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['name_zh'])
-	df_merge = df_merge.drop('name_zh', 1)
+	df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['id'])
+	df_merge = df_merge.drop('id', 1)
 	df_merge['donor_category'] = df_merge['donor_category'].astype(basestring)
 
 	df_merge['isFresh'] = df_merge.apply(check_fresh, axis=1)
@@ -244,23 +258,6 @@ def getAllMergeCsv():
 
 #dummy_data()
 
-psc_list = ['TSWN', 'PSC-Kowloon City', 'PSC-SSP', 'PSC-TM', 'PSC-Wong Tai Sin', 'PSC-YTM']
-yr_list = [2014, 2015]
-
-#psc_list = ['PSC-YTM']
-
-'''
-for psc in psc_list:
-    for yr in yr_list:
-		print('=' * 40)
-		print(psc + ' ' + str(yr))
-		print('=' * 40)
-
-		genTableauCsv(psc, yr, isFoodwork = False)
-
-getAllMergeCsv()
-'''
-
 
 def master_donor_address():
 	df = pd.read_csv('../../../../Tableau/Data/master.merge.csv')
@@ -330,8 +327,56 @@ def master_donor_address():
 	df.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
 
+
+ngo_list = ['TSWN', 'PSC-Kowloon City', 'PSC-SSP', 'PSC-TM', 'PSC-Wong Tai Sin', 'PSC-YTM', 'SWA', 'PCSS']
+isFoodwork_list = [True, True, False, True, True, True, True, True]
+
+ngo_list = ['TSWN', 'PSC-Kowloon City', 'PSC-SSP', 'PSC-Wong Tai Sin', 'PSC-YTM', 'SWA', 'PCSS']
+isFoodwork_list = [True, True, False, True, True, True, True]
+
+ngo_list = ngo_list = ['PSC-Kowloon City', 'PSC-SSP', 'PSC-TM', 'PSC-Wong Tai Sin', 'PSC-YTM', 'PCSS', 'SWA', 'TSWN', 'WSA']
+isFoodwork_list = [True, False, True, True, True, True, True, True, True]
+#ngo_list = ['SWA', 'PCSS']
+#yr_list = [2014, 2015]
+
+#ngo_list = ['WSA']
+#isFoodwork_list = [False]
+yr_list = [2015]
+
+ngo_dict = {"WSA": {"collection": [2015], "isFoodwork": True},
+            "TSWN": {"collection": [2013, 2014, 2015], "isFoodwork": True},
+            "Evergreen": {"collection": [2015], "isFoodwork": True},
+            "SWA": {"collection": [2015], "isFoodwork": True},
+            "Action Health": {"collection": [], "isFoodwork": True},
+            "PCSS": {"collection": [2015], "isFoodwork": True},
+            "PSC-SSP": {"collection": [2014, 2015], "isFoodwork": False},
+            "PSC-Kowloon City": {"collection": [2014, 2015], "isFoodwork": True},
+            "PSC-TM": {"collection": [2014, 2015], "isFoodwork": True},
+            "PSC-YTM": {"collection": [2014, 2015], "isFoodwork": True},
+            "PSC-Wong Tai Sin": {"collection": [2014, 2015], "isFoodwork": True}
+           }
+'''
+for ngo in ngo_dict:
+    if len(ngo_dict[ngo]["collection"]) > 0:
+        for yr in ngo_dict[ngo]["collection"]:
+            print('=' * 40)
+            print(ngo + ' ' + str(yr))
+            print('=' * 40)
+            genTableauCsv(ngo, yr, isFoodwork = False)
+'''
+ngo_list = ["TSWN"]
+yr_list = [2013, 2014, 2015]
+for ngo in ngo_list:
+    for yr in yr_list:
+		print('=' * 40)
+		print(ngo + ' ' + str(yr))
+		print('=' * 40)
+
+		#genTableauCsv(ngo, yr, isFoodwork = isFoodwork_list[ngo_list.index(ngo)])
+		genTableauCsv(ngo, yr, isFoodwork = False)
+
 getAllMergeCsv()
-master_donor_address()
+#master_donor_address()
 
 
 

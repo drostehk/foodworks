@@ -9,6 +9,8 @@ from gspread.ns import _ns
 from gspread.models import Spreadsheet
 from gspread.exceptions import SpreadsheetNotFound
 from foodworks.credentials import getGoogleCredentials
+
+
 import seaborn
 
 
@@ -290,13 +292,13 @@ class GoogleSourceSheet(Spreadsheet):
         if(len(collection.index) > header_offset):
             timestamps = collection.iloc[header_offset:, 0]
             raw_df = collection.ix[header_offset:, :].copy()
-            print(raw_df.columns.values)
+            #print(raw_df.columns.values)
             raw_df.columns = self.schema
             loc = len(self.df)
 
-            print(raw_df)
-            print(timestamps)
-            print(collection.iloc[0,1])
+            #print(raw_df)
+            #print(timestamps)
+            #print(collection.iloc[0,1])
             tempList = []
             for ridx in timestamps.index.tolist():
                 timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
@@ -310,7 +312,7 @@ def _is_week_number(title):
         return False
     elif int(title) < 1:
         return False
-    elif int(title) > 52:
+    elif int(title) > 53:
         return False
     else:
         return True

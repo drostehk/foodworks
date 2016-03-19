@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-import operator as op
 import os
+import operator as op
 file_num = 2
 
 ## Input NGO, Year
@@ -57,7 +57,7 @@ def genReport(ngo, year):
 	mapfile_name = ngo + '.map.csv'
 	donorsfile_name = ngo + '.donors.csv'
 	distfile_name = ngo + '.' + str(year) + '.distribution.csv'
-	benffile_name = ngo + '.beneficiary.csv'
+	benffile_name = ngo + '.' + str(year) + '.beneficiary.csv'
 	procfile_name = ngo + '.' + str(year) + '.processing.csv'
 	finfile_name = ngo + '.' + str(year) + '.finance.csv'
 
@@ -70,28 +70,49 @@ def genReport(ngo, year):
 	df_proc = pd.read_csv(folder_dir + ngo + '/' + procfile_name)
 	df_fin = pd.read_csv(folder_dir + ngo + '/' + finfile_name)
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv')])
+	yr_offset = [-1, 1]
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.distribution.csv')])
+	for yroff in yr_offset:
+		if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.csv'):
+			df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.csv')])
 
-	if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-		df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.processing.csv')])
+		if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.distribution.csv'):
+			df_dist = pd.concat([df_dist, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.distribution.csv')])
+
+		if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.processing.csv'):
+			df_proc = pd.concat([df_proc, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year + yroff) + '.processing.csv')])
 	
 	## Collection
 	# Reshape the dataframe
-	df = pd.melt(df, id_vars=list(df.columns.values)[0:4], value_vars=list(df.columns.values)[4:])
 	df['datetime'] = pd.to_datetime(df['datetime'])
+	df = df[df.apply(getYear, axis=1) == year]
+	df = df.fillna(0)
 
+	melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
+	rest_col = [x for x in list(df.columns.values) if x not in melt_head]
+
+	df = pd.melt(df, id_vars=melt_head, value_vars=rest_col)
+	df['datetime'] = pd.to_datetime(df['datetime'])
+	df = df[df.value != 0]
+	df = df[df['value'].notnull()]
+
+	#print(df.head(100))
+	df_map = df_map[df_map.organisation_id == ngo]
 	df_map = df_map[['category', 'canonical']]
+	df_map = df_map.drop_duplicates()
+
 	df_merge = pd.merge(df, df_map, how='left', left_on=['variable'], right_on=['category'])
 	df_merge = df_merge.drop('category', 1)
 
-	df_donors = df_donors[['name_zh', 'category']]
-	df_donors.rename(columns={'name_zh': 'name_zh', 'category': 'donor_category'}, inplace=True)
-	df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['name_zh'])
-	df_merge = df_merge.drop('name_zh', 1)
+	df_donors = df_donors[['id', 'foodshare_category']]
+	df_donors.rename(columns={'id': 'id', 'foodshare_category': 'donor_category'}, inplace=True)
+
+	#print(df_donors)
+
+	df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['id'])
+	df_merge = df_merge.drop('id', 1)
+
+
 	df_merge['donor_category'] = df_merge['donor_category'].astype(basestring)
 
 	df_merge['isFresh'] = df_merge.apply(check_fresh, axis=1)
@@ -120,6 +141,10 @@ def genReport(ngo, year):
 	df_fin.columns = ['month', 'income', 'expenditure']
 	df_fin['month_num'] = (df_fin.index + 1)
 
+	df_merge = df_merge[df_merge['donor_category'].notnull()]
+
+	df_merge = df_merge[['datetime', 'donor', 'organisation_id', 'programme', 'variable', 'value', 'canonical', 'donor_category', 'isFresh', 'year', 'month', 'day']]
+
 	# Empty DF for report
 	columns = ['element'] + map(str, range(1,13))
 	df_report = pd.DataFrame(columns=columns)
@@ -132,9 +157,12 @@ def genReport(ngo, year):
 	df_report.loc[len(df_report)+1] = genRow('Number of food rescue days/ month', df_merge.groupby('month').day.nunique())
 	df_report.loc[len(df_report)+1] = genRow('Total Donors Count', df_merge.groupby('month').donor.agg(['count'])['count'])
 	df_report.loc[len(df_report)+1] = genRow('Unique Donors Count', df_merge.groupby('month').donor.nunique())
-	
-	for donor in pd.unique(df_merge['donor_category']):
-		df_report.loc[len(df_report)+1] = genRow(donor.title() + ' (kg)', df_merge[df_merge['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
+
+	#print(pd.unique(df_merge['donor_category']))
+	#print(df_merge[df_merge['donor_category'].isnull()])
+
+
+
 	df_report.loc[len(df_report)+1] = genRow('Total beneficiaries', df_dist.groupby('month').Distribution_Count.agg(['sum'])['sum'])
 
 	df_report.loc[len(df_report)+1] = genRow('Compost volume (kg)', df_proc.groupby('month').compost.agg(['sum'])['sum'])
@@ -146,7 +174,7 @@ def genReport(ngo, year):
 
 	df_report = df_report.fillna(0)
 
-	df_report.loc[len(df_report)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Storage volume (kg)'))]	
+	df_report.loc[len(df_report)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df_report, 'Total volume of food collected (kg)'), getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Storage volume (kg)'))]
 	df_report.loc[len(df_report)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df_report, 'Total distribution volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
 	df_report.loc[len(df_report)+1] = ['Compost Percentage (%)'] + [e / a for e, a in zip(getList(df_report, 'Compost volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
 	df_report.loc[len(df_report)+1] = ['Disposal Percentrage (%)'] + [f / a for f, a in zip(getList(df_report, 'Disposal volume (kg)'), getList(df_report, 'Total volume of food collected (kg)'))]
@@ -158,6 +186,14 @@ def genReport(ngo, year):
 
 	df_report.loc[len(df_report)+1] = ['Average cost/kg of rescued food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total volume of food collected (kg)'))]
 	df_report.loc[len(df_report)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df_report, 'Total expenditure ($)'), getList(df_report, 'Total distribution volume (kg)'))]
+
+	df_report = df_report.iloc[[0, 1, 2, 12, 13, 7, 14, 8, 15, 9, 16, 3, 17, 18, 19, 10, 11, 20, 21, 22, 4, 5]].copy()
+
+	df_report.index = np.arange(1, len(df_report) + 1)
+
+	for donor in pd.unique(df_merge['donor_category']):
+		df_report.loc[len(df_report)+1] = genRow(donor.title() + ' (kg)', df_merge[df_merge['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
+
 
 	df_report['Total'] = df_report.ix[:, 1:13].sum(axis=1)
 	df_report['Average'] = df_report.ix[:, 1:13].mean(axis=1)
@@ -171,9 +207,17 @@ def report_to_excel(ngo, year, dest='../../../../Report/'):
 	genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
 	print('Done!')
 
-#report_to_excel('TSWN', 2015)
-report_to_excel('PSC Kowloon City', 2015)
+ngo_list = ['SWA', 'PCSS', 'TSWN', 'PSC-Kowloon City', 'PSC-SSP', 'PSC-TM', 'PSC-Wong Tai Sin', 'PSC-YTM']
+ngo_list = ['PCSS', 'TSWN', 'PSC-Kowloon City', 'PSC-SSP', 'PSC-TM', 'PSC-Wong Tai Sin', 'PSC-YTM']
+ngo_list = ['SWA', 'TSWN']
+ngo_list = ['PCSS']
+ngo_list = ['WSA']
 
+for ngo in ngo_list:
+	report_to_excel(ngo, 2015)
+
+#report_to_excel('TSWN', 2015)
+#report_to_excel('PSC Kowloon City', 2015)
 
 #genReport('TSWN', 2015)
 

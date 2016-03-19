@@ -4,6 +4,7 @@ __author__ = 'io'
 
 import datetime
 import pandas as pd
+import os.path as op
 from foodworks.connector import GoogleSourceClient
 from foodworks.credentials import getGoogleCredentials
 
@@ -61,6 +62,13 @@ class GoogleToCanonical(CanonicalTransformer):
     def donors_sheets_to_csv(self, dest='../../Data/Canonical/'):
         if self.stage == 'Collection':
             df = self.ss.parse_cover_sheet()
+
+            if op.isfile(self.csv_path + self.org + '.donors.csv'):
+                df_old = pd.read_csv(self.csv_path + self.org + '.donors.csv')
+                df = pd.concat([df_old, df])
+                df.drop_duplicates(subset='id', keep='last', inplace=False)
+
+            #df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.donors.csv', encoding="utf-8", index=False)
             df.to_csv(self.csv_path + self.org + '.donors.csv', encoding="utf-8", index=False)
         else:
             raise NotImplementedError
