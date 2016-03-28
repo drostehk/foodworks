@@ -11,17 +11,3 @@ There are three types of data that we have in our system
 1. Processed Data which has been taken from the Sourcing system and / or Raw Data in order to generate `RECORDS` from which reports can be generated.
 
 Files handed over by NGOs should only ever be dropped into `RAW`, the sheets in `Source` should copied from the Master Template, and the CSVs in `RECORDS` should only ever be generated programatically.  
-
-## Temp Description
-
-### CSV Generation
-
-`foodworks / reports / regen_data.py`
-
-### FoodShare Report & Tableau Data Model
-
-`foodworks / reports / foodworks / report`
-
-### Food Link Bread Report CSV
-
-`foodworks / reports / foodlinks / transform`
