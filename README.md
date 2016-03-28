@@ -1,10 +1,26 @@
-# foodworks
+# Foodworks Scripts and Libraries
+
 Foodworks project for Baptist University
+
+## Key Scripts
+
+* `scripts/export_source_data.py` - Generate CSVs based on the Source data NGOs have contributed. 
+* `scripts/report/generate_tableau_data_model.py` - Transform the records into a format that can be consumed by Tableau
+
+
+## Repository Structure
+
+* `archive` - Old analysis
+* `core` - Reusable libraties developed for the project
+* `scripts` - Executable scripts to transform data and generate reports
+    - `report` - Generate Reports
+    - `transform` - Processing Scripts for Raw Data
+    - `utility` - Small helper functions
 
 
 ## Data Structure
 
-There are three types of data that we have in our system
+There are three types of data that we have in our system, all hosted on Google Drive.
 
 1. `RAW` Data NGOs have captured in Excel sheets and other formats. These files do not follow our templates, but can be used for automatic transformation into our own records
 1. Structured Data which NGOs have captured in our `SOURCE` system following any of our agreed upon schemas. 
