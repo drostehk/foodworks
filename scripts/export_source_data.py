@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- coding: UTF-8-*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
-import sys
 import os
+import sys
 
-from foodworks.connector import GoogleSourceClient
-from foodworks.transform import GoogleToCanonical
+from foodworks.core.connector import GoogleSourceClient
+from foodworks.core.transform import GoogleToCanonical
 import time
 
 
@@ -84,8 +84,8 @@ ngo_dict = {"WSA": {"collection": [2015], "distribution": [2015], "processing": 
            }
 
 ngo_dict = {
-            "Action Health": {"collection": [], "distribution": [], "processing": []},
-            "PSC-Wong Tai Sin": {"collection": [2015], "distribution": [], "processing": []}
+            "WSA": {"collection": [2015], "distribution": [2015], "processing": [2015]},
+            "Evergreen": {"collection": [2015], "distribution": [2015], "processing": [2015]},
            }
 
 for ngo in ngo_dict:
