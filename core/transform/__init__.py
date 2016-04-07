@@ -1,1 +1,1 @@
-from google import GoogleToCanonical
+from google import SheetToCanonical

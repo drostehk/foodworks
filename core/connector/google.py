@@ -2,6 +2,7 @@
 # -*- coding: UTF-8-*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
+import re
 import datetime
 import numpy as np
 import pandas as pd
@@ -10,8 +11,12 @@ from gspread import Client
 from gspread.ns import _ns
 from gspread.models import Spreadsheet
 from gspread.exceptions import SpreadsheetNotFound
+from gspread.utils import *
 
 from ..credentials import getGoogleCredentials
+
+_url_key_re_v1 = re.compile(r'key=([^&#]+)')
+_url_key_re_v2 = re.compile(r'spreadsheets/d/([^&#]+)/edit')
 
 class GoogleSourceClient(Client):
     """Connected for Google Sheets"""
@@ -37,7 +42,7 @@ class GoogleSourceClient(Client):
 
         # Programme is optional and only used when NGOs split out their operations into multiple programmes
         if programme is not "":
-            programme = '' + programme
+            programme = ' - ' + programme
 
         ss_name = "{} - {} {} {}{}".format(self._ss_prefix, stage, org, year, programme)
         feed = self.get_spreadsheets_feed()
@@ -48,6 +53,32 @@ class GoogleSourceClient(Client):
                 return GoogleSourceSheet(self, elem, org, stage, year)
         else:
             raise SpreadsheetNotFound
+
+    def open_by_key(self, key, stage, org, year):
+        """Opens a spreadsheet specified by `key`, returning a :class:`~gspread.Spreadsheet` instance.
+        :param key: A key of a spreadsheet as it appears in a URL in a browser.
+        :raises gspread.SpreadsheetNotFound: if no spreadsheet with
+                                             specified `key` is found.
+        >>> c = gspread.Client(auth=('user@example.com', 'qwertypassword'))
+        >>> c.login()
+        >>> c.open_by_key('0BmgG6nO_6dprdS1MN3d3MkdPa142WFRrdnRRUWl1UFE')
+        """
+
+        feed = self.get_spreadsheets_feed()
+        for elem in feed.findall(_ns('entry')):
+            alter_link = finditem(lambda x: x.get('rel') == 'alternate',
+                                  elem.findall(_ns('link')))
+            m = _url_key_re_v1.search(alter_link.get('href'))
+            if m and m.group(1) == key:
+                return GoogleSourceSheet(self, elem, org, stage, year)
+
+            m = _url_key_re_v2.search(alter_link.get('href'))
+            if m and m.group(1) == key:
+                return GoogleSourceSheet(self, elem, org, stage, year)
+
+        else:
+            raise SpreadsheetNotFound
+
 
     @classmethod
     def connect(cls, credentials=getGoogleCredentials()):
@@ -83,10 +114,10 @@ class GoogleSourceSheet(Spreadsheet):
         if(stage == "Collection"):
             self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
         elif(stage == "Distribution"):
-            #self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count', 'Distribution_Amount']
-            self.std_cols = ['datetime', 'Beneglciary_id', 'Distribution_Count']
+            #self.std_cols = ['datetime', 'Beneficiary_id', 'Distribution_Count', 'Distribution_Amount']
+            self.std_cols = ['datetime', 'Beneficiary_id', 'Distribution_Count']
         elif(stage == "Processing"):
-            self.std_cols = ['datetime', 'na_1', 'na_2','compost', 'disposal', 'storage']
+            self.std_cols = ['datetime', 'na_1', 'na_2', 'compost', 'disposal', 'storage']
         else:
             raise NotImplementedError
 
@@ -266,8 +297,8 @@ class GoogleSourceSheet(Spreadsheet):
         header_offset = 2
         values = ws.get_all_values()
         collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Record)')
-        #print(collection.iloc[header_offset:, 0])
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
+        # print(collection.iloc[header_offset:, 0])
 
         if(len(collection.index) > header_offset):
             timestamps = collection.iloc[header_offset:, 0]
@@ -285,7 +316,7 @@ class GoogleSourceSheet(Spreadsheet):
         header_offset = 2
         values = ws.get_all_values()
         collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Record)')
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
         #print(collection.iloc[header_offset:, 0])
 
         if(len(collection.index) > header_offset):
@@ -304,7 +335,6 @@ class GoogleSourceSheet(Spreadsheet):
                 tempList = tempList + [timestamp]
             raw_df['datetime'] = tempList
             self.df = self.df.append(raw_df,ignore_index = True)    
-
 
 def _is_week_number(title):
     if not title.isdigit():
