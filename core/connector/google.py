@@ -1,18 +1,17 @@
 #!/usr/bin/python
 # -*- coding: UTF-8-*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 import datetime
 import numpy as np
 import pandas as pd
+
 from gspread import Client
 from gspread.ns import _ns
 from gspread.models import Spreadsheet
 from gspread.exceptions import SpreadsheetNotFound
-from foodworks.credentials import getGoogleCredentials
 
-
-import seaborn
-
+from ..credentials import getGoogleCredentials
 
 class GoogleSourceClient(Client):
     """Connected for Google Sheets"""

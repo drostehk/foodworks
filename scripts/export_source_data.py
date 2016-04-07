@@ -1,13 +1,15 @@
 #!/usr/bin/python
 # -*- coding: UTF-8-*-
 from __future__ import (absolute_import, division, print_function, unicode_literals)
+
 import os
 import sys
-
-from foodworks.core.connector import GoogleSourceClient
-from foodworks.core.transform import GoogleToCanonical
 import time
 
+sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+
+from core.connector import GoogleSourceClient
+from core.transform import GoogleToCanonical
 
 #gc = GoogleSourceClient.connect()
 #ss = gc.open_source('TSWN','Collection',2015)

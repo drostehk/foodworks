@@ -5,8 +5,8 @@ __author__ = 'io'
 import datetime
 import pandas as pd
 import os.path as op
-from foodworks.connector import GoogleSourceClient
-from foodworks.credentials import getGoogleCredentials
+from ..connector import GoogleSourceClient
+from ..credentials import getGoogleCredentials
 
 class CanonicalTransformer(object):
 

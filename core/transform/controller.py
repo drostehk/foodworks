@@ -4,8 +4,8 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 import sys
 import os
 
-from foodworks.connector import GoogleSourceClient
-from foodworks.transform import GoogleToCanonical
+from ..connector import GoogleSourceClient
+from ..transform import GoogleToCanonical
 
 
 
