@@ -40,9 +40,12 @@ def progress_completed(stage, ngo, programme):
         return False
 
 
-def check_or_set(base, key):
+def check_or_set(base, key, status=None):
     if not key in base:
-        base[key] = {}
+        if status:
+            base[key] = status
+        else:    
+            base[key] = {}
         update_progress(progress)
 
 '''
@@ -50,28 +53,33 @@ def check_or_set(base, key):
 '''
 
 def export_source_sheets():
-    try:
-        for stage, ngos in generate_structure().iteritems():
+    
+    for stage, ngos in generate_structure().iteritems():
 
-            check_or_set(progress, stage)
+        check_or_set(progress, stage)
 
-            if stage in ['distribution', 'processing']:
+        if stage in ['distribution', 'processing']:
+            continue
+        
+        for ngo, programmes in ngos.iteritems():
+
+            if ngo in ['FoodLink', 'NLPRA']:
                 continue
-            
-            for ngo, programmes in ngos.iteritems():
 
-                if ngo in ['FoodLink', 'NLPRA']:
-                    continue
+            check_or_set(progress[stage], ngo)
 
-                check_or_set(progress[stage], ngo)
+            if not programmes:
+                continue
+        
+            for programme, sheets in programmes.iteritems():
 
-                if not programmes:
-                    continue
-            
-                for programme, sheets in programmes.iteritems():
+                try:
 
                     if progress_completed(stage, ngo, programme):
-                        print('\n>>> SKIPPING >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                        if progress[stage][ngo][programme]:
+                            print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                        else:
+                            print('\n>>> SUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
                         continue
 
                     print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
@@ -95,10 +103,16 @@ def export_source_sheets():
                             ss.distribution_sheets_to_csv()
                             ss.beneficiary_sheets_to_csv()
 
-                    check_or_set(progress[stage][ngo], programme)
+                    check_or_set(progress[stage][ngo], programme, True)
     
-    except HTTPError:
-        export_source_sheets()
+                except HTTPError as e:
+                    print(e)
+                    export_source_sheets()
+
+                except BaseException as e:
+                    print(e)
+                    check_or_set(progress[stage][ngo], programme, False)
+                    export_source_sheets()
 
 if __name__ == '__main__':
     export_source_sheets()
