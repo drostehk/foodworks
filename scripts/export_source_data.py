@@ -99,3 +99,6 @@ def export_source_sheets():
     
     except HTTPError:
         export_source_sheets()
+
+if __name__ == '__main__':
+    export_source_sheets()
