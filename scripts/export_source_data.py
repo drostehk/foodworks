@@ -57,36 +57,39 @@ for stage, ngos in generate_structure().iteritems():
     
     for ngo, programmes in ngos.iteritems():
 
-            check_or_set(progress[stage], ngo)
+        if ngo in ['FoodLink', 'NLPRA']:
+            continue
 
-            if not programmes:
+        check_or_set(progress[stage], ngo)
+
+        if not programmes:
+            continue
+    
+        for programme, sheets in programmes.iteritems():
+
+            if progress_completed(stage, ngo, programme):
+                print('\n>>> SKIPPING >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
                 continue
-        
-            for programme, sheets in programmes.iteritems():
 
-                if progress_completed(stage, ngo, programme):
-                    print('\n>>> SKIPPING >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                    continue
-
-                print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+            print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+            
+            if not sheets:
+                continue
+    
+            for sheet in sheets:
+                ss = SheetToCanonical(**sheet)
                 
-                if not sheets:
-                    continue
-        
-                for sheet in sheets:
-                    ss = SheetToCanonical(**sheet)
-                    
-                    if stage == 'collection':
-                        ss.collection_sheets_to_csv()
-                        ss.donors_sheets_to_csv()
-                        ss.terms_sheets_to_csv()
-                    
-                    elif stage == 'processing':
-                        ss.finance_sheets_to_csv()
-                        ss.processing_sheets_to_csv()
-                    
-                    elif stage == 'distribution':
-                        ss.distribution_sheets_to_csv()
-                        ss.beneficiary_sheets_to_csv()
+                if stage == 'collection':
+                    ss.collection_sheets_to_csv()
+                    ss.donors_sheets_to_csv()
+                    ss.terms_sheets_to_csv()
+                
+                elif stage == 'processing':
+                    ss.finance_sheets_to_csv()
+                    ss.processing_sheets_to_csv()
+                
+                elif stage == 'distribution':
+                    ss.distribution_sheets_to_csv()
+                    ss.beneficiary_sheets_to_csv()
 
-                check_or_set(progress[stage][ngo], programme)
+            check_or_set(progress[stage][ngo], programme)
