@@ -7,6 +7,9 @@ Foodworks project for Baptist University
 * `scripts/export_source_data.py` - Generate CSVs based on the Source data NGOs have contributed. 
 * `scripts/report/generate_tableau_data_model.py` - Transform the records into a format that can be consumed by Tableau
 
+Run the scripts from within the root folder so scripts have access to the `core` pacakge. E.g. to regenerate the CSVs:
+
+`python scripts/export_source_data.py`
 
 ## Repository Structure
 
