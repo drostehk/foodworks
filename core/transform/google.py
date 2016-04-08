@@ -65,9 +65,9 @@ class SheetToCanonical(CanonicalTransformer):
             
             df = self.ss.parse_collection()
 
-            csv_dest = csv_filename()
+            csv_dest = self.csv_filename()
 
-            df_to_csv(df, csv_dest)
+            self.df_to_csv(df, csv_dest)
 
         else:
             raise NotImplementedError
@@ -78,11 +78,11 @@ class SheetToCanonical(CanonicalTransformer):
                        
             df = self.ss.parse_cover_sheet()
 
-            csv_dest = csv_filename('donors', False)
+            csv_dest = self.csv_filename('donors', False)
 
-            df = join_if_existing_csv(df, csv_dest) 
+            df = self.join_if_existing_csv(df, csv_dest) 
 
-            df_to_csv(df, csv_dest)
+            self.df_to_csv(df, csv_dest)
 
         else:
             raise NotImplementedError
@@ -96,9 +96,9 @@ class SheetToCanonical(CanonicalTransformer):
             
             df = self.ss.parse_cover_sheet()
 
-            csv_dest = csv_filename('finance')
+            csv_dest = self.csv_filename('finance')
 
-            df_to_csv(df, csv_dest)
+            self.df_to_csv(df, csv_dest)
         else:
             raise NotImplementedError
 
@@ -107,22 +107,23 @@ class SheetToCanonical(CanonicalTransformer):
             
             df = self.ss.parse_processing()
 
-            csv_dest = csv_filename()
+            csv_dest = self.csv_filename()
 
-            df_to_csv(df, csv_dest)
+            self.df_to_csv(df, csv_dest)
         else:
             raise NotImplementedError
 
+
     # Distribution Sheets to CSV
     
+
     def beneficiary_sheets_to_csv(self):
         if self.stage == 'Distribution':
             df = self.ss.parse_cover_sheet()
 
-            csv_dest = csv_filename('beneficiary')
+            csv_dest = self.csv_filename('beneficiary')
 
-            df_to_csv(df, csv_dest)
-
+            self.df_to_csv(df, csv_dest)
         else:
             raise NotImplementedError
 
@@ -134,12 +135,13 @@ class SheetToCanonical(CanonicalTransformer):
             
             df = self.ss.parse_distribution()
 
-            csv_dest = csv_filename()
+            csv_dest = self.csv_filename()
 
-            df_to_csv(df, csv_dest)
+            self.df_to_csv(df, csv_dest)
         else:
             self.print_sheet_header()
             raise NotImplementedError
+
 
     # Meta Sheets to CSV
 
@@ -148,29 +150,34 @@ class SheetToCanonical(CanonicalTransformer):
             df = pd.DataFrame(sheet)
             df.to_csv(self.dest + code + '.csv', encoding="utf-8", index=False, header=False)
 
+
     # Utility Functions
 
     def csv_filename(self, meta="", year=True):
 
         csv_base = self.csv_path + self.org
 
-        if not meta:
-            csv_base + '.' + self.stage.lower()
-
         if year:
             csv_base = csv_base + '.' + str(self.year)
 
         if meta:
-            meta = "." + meta
+            name = meta
+        else:
+            name = self.stage.lower()
+        
+        csv_base = csv_base + '.' + name
 
         if self.programme:
-            csv_dest = "{} - {}{}.csv".format(csv_base, self.programme, meta)
+            programme = self.programme
         else:
-            csv_dest = "{} - General{}.csv".format(csv_base, meta)
-        
+            programme = 'General'
+            
+        csv_dest = "{} - {}.csv".format(csv_base, programme)
+                
         return csv_dest
 
-    def df_to_csv(df, csv_dest):
+
+    def df_to_csv(self, df, csv_dest):
         df.to_csv(csv_dest, encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
 
@@ -180,15 +187,16 @@ class SheetToCanonical(CanonicalTransformer):
         if len(name) > 6:
             return " ".join(name[7:])
         else:
-            return 'None'
+            return None
+
 
     def join_if_existing_csv(self, df, csv_dest):
         if op.isfile(csv_dest):
             df_old = pd.read_csv(csv_dest)
             df = pd.concat([df_old, df])
             df.drop_duplicates(subset='id', keep='last', inplace=True)
-
         return df
         
+
     def print_sheet_header(self):
         print '\n***', self.stage, '-', self.year, '***\n'

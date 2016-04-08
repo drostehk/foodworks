@@ -32,7 +32,7 @@ except:
     update_progress(progress)
 
 
-def progress_completed(stage, ngo, programme):
+def progress_check(stage, ngo, programme):
     try:
         return progress[stage][ngo].has_key(programme)
         
@@ -41,10 +41,13 @@ def progress_completed(stage, ngo, programme):
 
 
 def check_or_set(base, key, status=None):
-    if not key in base or status is not None:
+
+    if status is not None:
         base[key] = status
-    else:    
+
+    elif key not in base:
         base[key] = {}
+    
     update_progress(progress)
 
 '''
@@ -57,16 +60,14 @@ def export_source_sheets():
 
         check_or_set(progress, stage)
 
-        
         # Selective processing of stages
         # if stage in ['distribution', 'processing', 'collection']:
-        if stage in ['collection']:
-            continue
+            # continue
         
         for ngo, programmes in ngos.iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['FoodLink', 'NLPRA','PSC']:
+            if ngo in ['FoodLink', 'NLPRA']:
                 continue
 
             check_or_set(progress[stage], ngo)
@@ -78,11 +79,11 @@ def export_source_sheets():
 
                 try:
 
-                    if progress_completed(stage, ngo, programme):
+                    if progress_check(stage, ngo, programme):
                         if progress[stage][ngo][programme]:
                             print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
                         else:
-                            print('\n>>> SUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                            print('\n>>> MUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
                         continue
 
                     print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
@@ -96,7 +97,6 @@ def export_source_sheets():
                         if stage == 'collection':
                             ss.collection_sheets_to_csv()
                             ss.donors_sheets_to_csv()
-                            ss.terms_sheets_to_csv()
                         
                         elif stage == 'processing':
                             ss.finance_sheets_to_csv()
@@ -116,6 +116,9 @@ def export_source_sheets():
                     print(e)
                     check_or_set(progress[stage][ngo], programme, False)
                     export_source_sheets()
+
+    # Refector the Terms
+    # ss.terms_sheets_to_csv()
 
 if __name__ == '__main__':
     export_source_sheets()

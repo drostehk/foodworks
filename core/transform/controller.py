@@ -5,7 +5,7 @@ import sys
 import os
 
 from ..connector import GoogleSourceClient
-from ..transform import GoogleToCanonical
+from ..transform import SheetToCanonical
 
 
 

@@ -15,8 +15,6 @@ sys.path.append( os.path.dirname(os.path.dirname(
 
 from core.drive import generate_structure
 
-# 
-
 ROOT_FOLDER = 'data/Canonical/'
 FRESH_FOOD_CATEGORIES = ["Vegetable", "Leafy Veg", "Ground Veg", 
                          "Soy Products", "Fruit", "Bread", "Meat",

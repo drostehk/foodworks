@@ -133,16 +133,8 @@ class GoogleSourceSheet(Spreadsheet):
             cover = pd.DataFrame(values)
             cover.columns = cover.iloc[0]
             cover = cover.ix[1:]
+            # print(cover)
             return cover
-        '''    
-                                    elif self.stage == 'Processing':
-                                        ws = self.get_worksheet(0)
-                                        values = ws.get_all_values()
-                                        cover = pd.DataFrame(values)
-                                        cover.columns = cover.iloc[0]
-                                        cover = cover.ix[1:]
-                                        return cover
-        '''    
 
     def collect_week_sheets(self):
         return [ws for ws in self.worksheets() if _is_week_number(ws.title)]
@@ -180,8 +172,11 @@ class GoogleSourceSheet(Spreadsheet):
             raise NotImplementedError
 
     def parse_collection(self):
+
         wss = self.collect_week_sheets()
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
+        
+        # for ws in wss[50:]:
         for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -191,7 +186,8 @@ class GoogleSourceSheet(Spreadsheet):
 
         self.create_translations_keys(terms)
         self.create_mappings_keys(terms)
-        self.create_units_keys(terms)
+        # Nobody is using units 
+        # self.create_units_keys(terms)
 
         return self.df
 
