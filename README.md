@@ -42,3 +42,16 @@ Once Google Drive has been scanned for its FoodWorks Source directory structure,
 ### progress.json
 
 Minor flaws in the data entry of the Source system will halt the export and prompt the user to inspect the data. However, to save progress on the clean spreadsheets, `progress.json` stores the combinations of `stage`, `ngo`, `programme` which have succesfully been exported.
+
+
+## Relevant Steps for Data Entry & Processing
+
+1. All data needs to be filled in by **NGOs** (collection, distribution, AND processing) by the `5th`
+
+1. Data needs to be checked and validated by **Wilson** (holes, gaps, missing or misplaced information)
+
+1. Data needs to be passed to **Droste** for exporting and processing.
+
+1. **Daisy** needs to do the mapping 
+
+1. Reports and Data Visualisation to be returned to NGOs on the `8th`
