@@ -2,10 +2,11 @@
 # -*- coding: UTF-8-*-
 __author__ = 'io'
 
+import os
 import datetime
 import pandas as pd
-import os
 import os.path as op
+
 from ..connector import GoogleSourceClient
 from ..credentials import getGoogleCredentials
 
@@ -30,6 +31,7 @@ class CanonicalTransformer(object):
 
 
 class SheetToCanonical(CanonicalTransformer):
+    
     def __init__(self, name, id, dest='data/Canonical/'):
         """
         New version of GoogleToCanonical
@@ -37,80 +39,156 @@ class SheetToCanonical(CanonicalTransformer):
         super(SheetToCanonical, self).__init__()
 
         self.client = GoogleSourceClient.connect(getGoogleCredentials())
+        self.dest   = dest
+
+        name        = name.split()
+        self.org    = name[4]
+        self.stage  = name[3]
+        self.year   = name[5]
+
+
+        self.programme = self.set_programme(name)
         
-        name = name.split()
-        self.org = name[4]
-        self.stage = name[3]
-        self.year = name[5]
-        
-        self.csv_path = dest + self.org + '/'
+        self.csv_path = self.dest + self.org + '/'
 
         if not op.exists(self.csv_path):
             os.makedirs(self.csv_path)
 
         self.ss = self.client.open_by_key(id, self.stage, self.org, self.year)
 
+    # Collection Sheets to CSV
+
     def collection_sheets_to_csv(self):
         if self.stage == 'Collection':
+            
             self.print_sheet_header()
+            
             df = self.ss.parse_collection()
-            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.csv',
-                        encoding="utf-8", index=False, date_format='%Y-%m-%d')
+
+            csv_dest = csv_filename()
+
+            df_to_csv(df, csv_dest)
+
         else:
             raise NotImplementedError
 
-    def terms_sheets_to_csv(self, dest='data/Canonical/'):
+    def donors_sheets_to_csv(self):
+        
+        if self.stage == 'Collection':
+                       
+            df = self.ss.parse_cover_sheet()
+
+            csv_dest = csv_filename('donors', False)
+
+            df = join_if_existing_csv(df, csv_dest) 
+
+            df_to_csv(df, csv_dest)
+
+        else:
+            raise NotImplementedError
+
+    # Processing Sheets to CSV
+
+    def finance_sheets_to_csv(self):
+        if self.stage == 'Processing':
+            
+            self.print_sheet_header()
+            
+            df = self.ss.parse_cover_sheet()
+
+            csv_dest = csv_filename('finance')
+
+            df_to_csv(df, csv_dest)
+        else:
+            raise NotImplementedError
+
+    def processing_sheets_to_csv(self):
+        if self.stage == 'Processing':
+            
+            df = self.ss.parse_processing()
+
+            csv_dest = csv_filename()
+
+            df_to_csv(df, csv_dest)
+        else:
+            raise NotImplementedError
+
+    # Distribution Sheets to CSV
+    
+    def beneficiary_sheets_to_csv(self):
+        if self.stage == 'Distribution':
+            df = self.ss.parse_cover_sheet()
+
+            csv_dest = csv_filename('beneficiary')
+
+            df_to_csv(df, csv_dest)
+
+        else:
+            raise NotImplementedError
+
+
+    def distribution_sheets_to_csv(self):
+        if self.stage == 'Distribution':
+            
+            self.print_sheet_header()
+            
+            df = self.ss.parse_distribution()
+
+            csv_dest = csv_filename()
+
+            df_to_csv(df, csv_dest)
+        else:
+            self.print_sheet_header()
+            raise NotImplementedError
+
+    # Meta Sheets to CSV
+
+    def terms_sheets_to_csv(self):
         for sheet, code in self.ss.collect_terms_sheets():
             df = pd.DataFrame(sheet)
-            df.to_csv(self.csv_path + self.org + '.' + code + '.csv', encoding="utf-8", index=False, header=False)
+            df.to_csv(self.dest + code + '.csv', encoding="utf-8", index=False, header=False)
 
-    def donors_sheets_to_csv(self, dest='data/Canonical/'):
-        if self.stage == 'Collection':
-            df = self.ss.parse_cover_sheet()
+    # Utility Functions
 
-            if op.isfile(self.csv_path + self.org + '.donors.csv'):
-                df_old = pd.read_csv(self.csv_path + self.org + '.donors.csv')
-                df = pd.concat([df_old, df])
-                df.drop_duplicates(subset='id', keep='last', inplace=False)
+    def csv_filename(self, meta="", year=True):
 
-            #df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.donors.csv', encoding="utf-8", index=False)
-            df.to_csv(self.csv_path + self.org + '.donors.csv', encoding="utf-8", index=False)
+        csv_base = self.csv_path + self.org
+
+        if not meta:
+            csv_base + '.' + self.stage.lower()
+
+        if year:
+            csv_base = csv_base + '.' + str(self.year)
+
+        if meta:
+            meta = "." + meta
+
+        if self.programme:
+            csv_dest = "{} - {}{}.csv".format(csv_base, self.programme, meta)
         else:
-            raise NotImplementedError
+            csv_dest = "{} - General{}.csv".format(csv_base, meta)
+        
+        return csv_dest
 
-    def beneficiary_sheets_to_csv(self, dest='data/Canonical/'):
-        if self.stage == 'Distribution':
-            df = self.ss.parse_cover_sheet()
-            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.beneficiary.csv', encoding="utf-8", index=False)
+    def df_to_csv(df, csv_dest):
+        df.to_csv(csv_dest, encoding="utf-8", index=False, date_format='%Y-%m-%d')
+
+
+    def set_programme(self, name):
+
+        # FoodWorks Data - Processing PSC 2015 - SSP
+        if len(name) > 6:
+            return " ".join(name[7:])
         else:
-            self.print_sheet_header()
-            raise NotImplementedError
+            return 'None'
 
-    def distribution_sheets_to_csv(self, dest='data/Canonical/'):
-        if self.stage == 'Distribution':
-            self.print_sheet_header()
+    def join_if_existing_csv(self, df, csv_dest):
+        if op.isfile(csv_dest):
+            df_old = pd.read_csv(csv_dest)
+            df = pd.concat([df_old, df])
+            df.drop_duplicates(subset='id', keep='last', inplace=True)
 
-            df = self.ss.parse_distribution()
-            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.distribution.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
-        else:
-            self.print_sheet_header()
-            raise NotImplementedError
-
-    def finance_sheets_to_csv(self, dest='data/Canonical/'):
-        if self.stage == 'Processing':
-            df = self.ss.parse_cover_sheet()
-            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.finance.csv', encoding="utf-8", index=False)
-        else:
-            raise NotImplementedError
-
-    def processing_sheets_to_csv(self, dest='data/Canonical/'):
-        if self.stage == 'Processing':
-            df = self.ss.parse_processing()
-            df.to_csv(self.csv_path + self.org + '.' + str(self.year) + '.processing.csv', encoding="utf-8", index=False, date_format='%Y-%m-%d')
-        else:
-            raise NotImplementedError
-
+        return df
+        
     def print_sheet_header(self):
         print '\n***', self.stage, '-', self.year, '***\n'
-
-
