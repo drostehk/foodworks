@@ -41,12 +41,11 @@ def progress_completed(stage, ngo, programme):
 
 
 def check_or_set(base, key, status=None):
-    if not key in base:
-        if status:
-            base[key] = status
-        else:    
-            base[key] = {}
-        update_progress(progress)
+    if not key in base or status is not None:
+        base[key] = status
+    else:    
+        base[key] = {}
+    update_progress(progress)
 
 '''
 /SAVE PROGRESS
@@ -58,12 +57,16 @@ def export_source_sheets():
 
         check_or_set(progress, stage)
 
-        if stage in ['distribution', 'processing']:
+        
+        # Selective processing of stages
+        # if stage in ['distribution', 'processing', 'collection']:
+        if stage in ['collection']:
             continue
         
         for ngo, programmes in ngos.iteritems():
 
-            if ngo in ['FoodLink', 'NLPRA']:
+            # Selective processing of NGOS
+            if ngo in ['FoodLink', 'NLPRA','PSC']:
                 continue
 
             check_or_set(progress[stage], ngo)
