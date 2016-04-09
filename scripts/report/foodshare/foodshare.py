@@ -64,7 +64,13 @@ def generate_foodshare_report(ngo, programme):
     fns = available_csvs(ngo)
     df_map = map_csv_to_dataframe(ngo, fns, programme)
 
+    df_map.update(meta_csv_to_dataframe(ngo))
+
+    # Collection
     df_map['collection'] = clean_df(df_map, 'collection')
+    df_map['collection'] = df_merge(df_map, 'collection', 'map', 'variable', 'category')
+    df_map['collection'] = df_merge(df_map, 'collection', 'donors', 'donor', 'id')
+
 
     import pdb
     pdb.set_trace()
@@ -83,7 +89,29 @@ def map_csv_to_dataframe(ngo, fns, programme):
         path = ROOT_FOLDER + '/' + ngo + '/'
         df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
 
+    # Clean Donors
+
+    df_map['donors'] = clean_donors()
+
     return df_map
+
+
+
+def meta_csv_to_dataframe(ngo):
+    metas = {}
+    for meta in META_FILES:
+        df = pd.read_csv(ROOT_FOLDER + meta + '.csv')
+
+        df = df[df.organisation_id == ngo]
+
+        if meta == 'map':
+            df = df[['category', 'canonical']]
+
+        df = df.drop_duplicates()
+
+        metas[meta] = df
+
+    return metas
 
 
 def clean_df(df_map, key):
@@ -93,6 +121,15 @@ def clean_df(df_map, key):
    
     return df
 
+def clean_donors(df_map):
+    df = df_map['donors']
+    df = df[['id', 'foodshare_category']]
+    df = df.rename(columns={'foodshare_category': 'donor_category'})
+    df['donor_category'] = df['donor_category'].astype(basestring)
+
+    return df
+
+
 def df_slice_report_period(df, dt_key):
     df[dt_key] = pd.to_datetime(df[dt_key])
 
@@ -100,6 +137,12 @@ def df_slice_report_period(df, dt_key):
     end = df[dt_key].searchsorted(datetime.combine(REPORT_ENDDATE, time()))[0]
     
     return df.iloc[start:end]
+
+def df_merge(df_map, key_left, key_right, merge_key_left, merge_key_right):
+    df = pd.merge(df_map[key_left], df_map[key_right], how='left', left_on=[merge_key_left], right_on=[merge_key_right])
+    df = df_merge.drop(merge_key_right, 1)
+
+    return df
 
 
 # Utilities 

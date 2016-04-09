@@ -30,36 +30,36 @@
 	
 	## Collection
 	# Reshape the dataframe
-	df['datetime'] = pd.to_datetime(df['datetime'])
-	df = df[df.apply(getYear, axis=1) == year]
-	df = df.fillna(0)
+	# df['datetime'] = pd.to_datetime(df['datetime'])
+	# df = df[df.apply(getYear, axis=1) == year]
+	# df = df.fillna(0)
 
-	melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
-	rest_col = [x for x in list(df.columns.values) if x not in melt_head]
+	# melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
+	# rest_col = [x for x in list(df.columns.values) if x not in melt_head]
 
-	df = pd.melt(df, id_vars=melt_head, value_vars=rest_col)
-	df['datetime'] = pd.to_datetime(df['datetime'])
-	df = df[df.value != 0]
-	df = df[df['value'].notnull()]
+	# df = pd.melt(df, id_vars=melt_head, value_vars=rest_col)
+	# df['datetime'] = pd.to_datetime(df['datetime'])
+	# df = df[df.value != 0]
+	# df = df[df['value'].notnull()]
 
 	#print(df.head(100))
-	df_map = df_map[df_map.organisation_id == ngo]
-	df_map = df_map[['category', 'canonical']]
-	df_map = df_map.drop_duplicates()
+	# df_map = df_map[df_map.organisation_id == ngo]
+	# df_map = df_map[['category', 'canonical']]
+	# df_map = df_map.drop_duplicates()
 
-	df_merge = pd.merge(df, df_map, how='left', left_on=['variable'], right_on=['category'])
-	df_merge = df_merge.drop('category', 1)
+	# df_merge = pd.merge(df, df_map, how='left', left_on=['variable'], right_on=['category'])
+	# df_merge = df_merge.drop('category', 1)
 
-	df_donors = df_donors[['id', 'foodshare_category']]
-	df_donors.rename(columns={'id': 'id', 'foodshare_category': 'donor_category'}, inplace=True)
+	# df_donors = df_donors[['id', 'foodshare_category']]
+	# df_donors.rename(columns={'id': 'id', 'foodshare_category': 'donor_category'}, inplace=True)
 
 	#print(df_donors)
 
-	df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['id'])
-	df_merge = df_merge.drop('id', 1)
+	# df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['id'])
+	# df_merge = df_merge.drop('id', 1)
 
 
-	df_merge['donor_category'] = df_merge['donor_category'].astype(basestring)
+	# df_merge['donor_category'] = df_merge['donor_category'].astype(basestring)
 
 	df_merge['isFresh'] = df_merge.apply(check_fresh, axis=1)
 	df_merge['year'] = df_merge.apply(getYear, axis=1)
