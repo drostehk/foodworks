@@ -211,6 +211,63 @@ def report_template():
     df = pd.DataFrame(columns=columns)
     return df
 
+def generate_report_rows(df_map):
+    
+    # ToDo : Refactor | MART
+    
+    df = df_map['report']
+    df_c = df_map['collection']
+    df_d = df_map['processing']
+    df_d = df_map['distribution']
+    df_f = df_map['finance']
+    
+    df.loc[len(df)+1] = genRow('Total volume of food collected (kg)', df_c.groupby('month').value.agg(['sum'])['sum'])
+    df.loc[len(df)+1] = genRow('Total volume of fresh food (kg)', df_c[df_c['isFresh'] == True].groupby('month').value.agg(['sum'])['sum'])
+    df.loc[len(df)+1] = genRow('Total volume of packaged food (kg)', df_c[df_c['isFresh'] == False].groupby('month').value.agg(['sum'])['sum'])
+
+    df.loc[len(df)+1] = genRow('Number of food rescue days/ month', df_c.groupby('month').day.nunique())
+    df.loc[len(df)+1] = genRow('Total Donors Count', df_c.groupby('month').donor.agg(['count'])['count'])
+    df.loc[len(df)+1] = genRow('Unique Donors Count', df_c.groupby('month').donor.nunique())
+
+
+    df.loc[len(df)+1] = genRow('Total beneficiaries', df_d.groupby('month').Distribution_Count.agg(['sum'])['sum'])
+
+    df.loc[len(df)+1] = genRow('Compost volume (kg)', df_p.groupby('month').compost.agg(['sum'])['sum'])
+    df.loc[len(df)+1] = genRow('Disposal volume (kg)', df_p.groupby('month').disposal.agg(['sum'])['sum'])
+    df.loc[len(df)+1] = genRow('Storage volume (kg)', df_p.groupby('month').storage.agg(['sum'])['sum'])
+
+    df.loc[len(df)+1] = genRow('Donation/ Income ($)', df_f.groupby('month_num').income.agg(['sum'])['sum'])
+    df.loc[len(df)+1] = genRow('Total expenditure ($)', df_f.groupby('month_num').expenditure.agg(['sum'])['sum'])
+
+    df = df.fillna(0)
+
+    df.loc[len(df)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df, 'Total volume of food collected (kg)'), getList(df, 'Compost volume (kg)'), getList(df, 'Disposal volume (kg)'), getList(df, 'Storage volume (kg)'))]
+    df.loc[len(df)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df, 'Total distribution volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
+    df.loc[len(df)+1] = ['Compost Percentage (%)'] + [e / a for e, a in zip(getList(df, 'Compost volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
+    df.loc[len(df)+1] = ['Disposal Percentrage (%)'] + [f / a for f, a in zip(getList(df, 'Disposal volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
+    df.loc[len(df)+1] = ['Storage Percentage (%)'] + [g / a for g, a in zip(getList(df, 'Storage volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
+    df.loc[len(df)+1] = ['Average amount of food rescued/ day (kg)'] + [a / h for a , h in zip(getList(df, 'Total volume of food collected (kg)'), getList(df, 'Number of food rescue days/ month'))]
+    df.loc[len(df)+1] = ['Average beneficiaries/day '] + [a / h for a , h in zip(getList(df, 'Total beneficiaries'), getList(df, 'Number of food rescue days/ month'))]
+    df.loc[len(df)+1] = ['Average volume of food distributed/ per person  / day (kg)'] + [i / d / h for i , d, h in zip(getList(df, 'Total distribution volume (kg)'), getList(df, 'Number of food rescue days/ month'), getList(df, 'Total beneficiaries'))]
+    df.loc[len(df)+1] = ['Average cost/ beneficiary ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total beneficiaries'))]
+
+    df.loc[len(df)+1] = ['Average cost/kg of rescued food ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total volume of food collected (kg)'))]
+    df.loc[len(df)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total distribution volume (kg)'))]
+
+    df = df.iloc[[0, 1, 2, 12, 13, 7, 14, 8, 15, 9, 16, 3, 17, 18, 19, 10, 11, 20, 21, 22, 4, 5]].copy()
+
+    df.index = np.arange(1, len(df) + 1)
+
+    for donor in pd.unique(df_c['donor_category']):
+        df.loc[len(df)+1] = genRow(donor.title() + ' (kg)', df_c[df_c['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
+
+    df['Total'] = df.ix[:, 1:13].sum(axis=1)
+    df['Average'] = df.ix[:, 1:13].mean(axis=1)
+
+    return(df.fillna(0))
+
+
+
 
 # Utilities 
 
