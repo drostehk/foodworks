@@ -33,7 +33,8 @@ FRESH_FOOD_CATEGORIES = ["Vegetable", "Leafy Veg", "Ground Veg",
 PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments",
                             "Drinks", "Milk Powder", "Packaged Other"]
 
-STAGES = ['collection','processing','distribution']
+#STAGES = ['collection','processing','distribution']
+STAGES = ['collection']
 META_FILES_PROGRAMME = ['beneficiary','finance']
 META_FILES_NGO = ['donors']
 #META_FILES = ['units','i18n','map']
@@ -162,6 +163,7 @@ def getMonthDays(element, year):
 
 
 def genTableauCsv(ngo, program, isFoodwork = False):
+    print('Exporting...' + ngo + ' - ' + program)
     ## Set file name
 
     #datafile_name = generate_ngo_dataframe('PCSS', 'General')['collection']
@@ -174,6 +176,7 @@ def genTableauCsv(ngo, program, isFoodwork = False):
     finfile_name = ngo + '.' + str(year) + '.finance.csv'
     '''
     df = generate_ngo_dataframe(ngo, program)['collection']
+    #print(df)
     #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
     df_map = meta_csv_to_dataframe(ngo)['map']
     df_donors = generate_ngo_dataframe(ngo, program)['donors']
@@ -183,7 +186,7 @@ def genTableauCsv(ngo, program, isFoodwork = False):
     melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
     rest_col = [x for x in list(df.columns.values) if x not in melt_head]
 
-    df = pd.melt(df, id_vars=melt_head, value_vars=rest_col)
+    df = pd.melt(df, id_vars=melt_head, value_vars=rest_col).drop_duplicates()
     df['datetime'] = pd.to_datetime(df['datetime'])
 
     df = df[~df[['value']].isnull().any(axis=1)]
@@ -422,5 +425,5 @@ for ngo in ngo_list:
 
 #print(generate_structure())
 
-#generate_all_tableau_csv()
+generate_all_tableau_csv()
 getAllMergeCsv()
