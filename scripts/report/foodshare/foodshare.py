@@ -41,6 +41,7 @@ def get_report_dates():
                                 year=CURRENT_YEAR).date()for d in ['1/4','1/9','1/12']]
     REPORT_PERIOD_ENDDATES   = [datetime.strptime(d, "%d/%m").replace(
                                 year=CURRENT_YEAR).date() for d in ['31/8','30/11','31/3']]
+    REPORT_DURATION_MONTHS   = [5,3,4]
 
     # Silly Hack
     REPORT_PERIOD_STARTDATES[-1] = REPORT_PERIOD_STARTDATES[-1].replace(year=CURRENT_YEAR-1)
@@ -48,9 +49,10 @@ def get_report_dates():
     min_index = lambda values: min(xrange(len(values)), key=values.__getitem__)
     period_index  = min_index([d - datetime.now().date() for d in REPORT_PERIOD_ENDDATES])
 
-    return map(lambda x : x[period_index], [REPORT_PERIOD_STARTDATES, REPORT_PERIOD_ENDDATES])
+    return map(lambda x : x[period_index], [REPORT_PERIOD_STARTDATES,
+                                            REPORT_PERIOD_ENDDATES, REPORT_DURATION_MONTHS])
 
-REPORT_STARTDATE, REPORT_ENDDATE = get_report_dates()
+REPORT_STARTDATE, REPORT_ENDDATE, REPORT_DURATION_MONTHS = get_report_dates()
 
 print('GENERATING REPORT FOR PERIOD\n ', REPORT_STARTDATE, '-', REPORT_ENDDATE)
 
@@ -79,10 +81,6 @@ def generate_foodshare_report(ngo, programme):
 
     df_map.update(meta_csv_to_dataframe(ngo))
 
-    print(ngo)
-    print(programme)
-    print('***>>>\n')
-
     # Collection
     df_map['collection'] = clean_df(df_map, 'collection')
     df_map['collection'] = melt_df(df_map, 'collection', MELT_INDEX)
@@ -110,7 +108,7 @@ def generate_foodshare_report(ngo, programme):
     df_map['report'] = report_template()
     df_map['report'] = generate_report_rows(df_map)
 
-    report_to_excel(df_map['report'])
+    report_to_excel(df_map['report'], ngo, programme)
 
 # Data Processing 
 
@@ -123,7 +121,7 @@ def map_csv_to_dataframe(ngo, fns, programme):
     for stage in STAGES + META_FILES_PROGRAMME + META_FILES_NGO:
         fns = filter(lambda fn: stage in fn, fns_in_programme)
         path = ROOT_FOLDER + '/' + ngo + '/'
-        df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf_8') for fn in fns])
+        df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf_8') for fn in sorted(fns)])
 
     # Clean Donors
 
@@ -176,6 +174,27 @@ def clean_finance(df_map):
     df = df_map['finance']
     df.columns = FINANCE_INDEX
     df['month_num'] = (df.index + 1)
+    
+    # ToDo Refactor | Mart
+
+    if REPORT_STARTDATE.month == 4:
+        finance_start = 8
+    elif REPORT_STARTDATE.month == 9:
+        finance_start = 4
+    elif REPORT_STARTDATE.month == 12:
+        finance_start = 13
+
+    # import pdb
+    # pdb.set_trace()
+
+    finance_end = finance_start - REPORT_DURATION_MONTHS
+    df = df.iloc[-finance_start:-finance_end]
+
+    df.expenditure = df.expenditure.astype('float')
+
+    REPORT_STARTDATE.month
+    
+    return df
 
 def melt_df(df_map, key, index_cols):
     df = df_map[key] 
@@ -239,6 +258,9 @@ def generate_report_rows(df_map):
     df.loc[len(df)+1] = genRow('Disposal volume (kg)', df_p.groupby('month').disposal.agg(['sum'])['sum'])
     df.loc[len(df)+1] = genRow('Storage volume (kg)', df_p.groupby('month').storage.agg(['sum'])['sum'])
 
+    # import pdb
+    # pdb.set_trace()
+
     df.loc[len(df)+1] = genRow('Donation/ Income ($)', df_f.groupby('month_num').income.agg(['sum'])['sum'])
     df.loc[len(df)+1] = genRow('Total expenditure ($)', df_f.groupby('month_num').expenditure.agg(['sum'])['sum'])
 
@@ -261,7 +283,12 @@ def generate_report_rows(df_map):
 
     df.index = np.arange(1, len(df) + 1)
 
+    # import pdb
+    # pdb.set_trace()
+
     for donor in pd.unique(df_c['donor_category']):
+        if not isinstance(donor, basestring):
+            donor = "MISSING"
         df.loc[len(df)+1] = genRow(donor.title() + ' (kg)', df_c[df_c['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
 
     df['Total'] = df.ix[:, 1:13].sum(axis=1)
@@ -307,8 +334,12 @@ def getMonthDays(element, year):
 
 
 def report_to_excel(report, ngo, programme):
-    name = ".".join(ngo, programme, str(REPORT_ENDDATE))
-    dest_xlsx = REPORT_FOLDER + ".".join(name, 'report', 'xlsx')
+    name = ".".join([ngo, programme, str(REPORT_ENDDATE)])
+    dest_xlsx = REPORT_FOLDER + ".".join([name, 'report', 'xlsx'])
+
+    if not os.path.exists(REPORT_FOLDER):
+        os.makedirs(REPORT_FOLDER)
+
     print('Report generating to: ' + dest_xlsx)
     report.to_excel(dest_xlsx, index_label='label', merge_cells=False, sheet_name = name)
     print('Done!')
