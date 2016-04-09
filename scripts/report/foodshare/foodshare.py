@@ -17,6 +17,8 @@ sys.path.append( os.path.dirname(os.path.dirname(
 from core.drive import generate_structure
 
 ROOT_FOLDER = 'data/Canonical/'
+REPORT_FOLDER = 'data/Report/'
+
 FRESH_FOOD_CATEGORIES = ["Vegetable", "Leafy Veg", "Ground Veg", 
                          "Soy Products", "Fruit", "Bread", "Meat",
                          "Seafood", "Cooked Food", "Fresh Other"]
@@ -106,8 +108,9 @@ def generate_foodshare_report(ngo, programme):
 
     # Report
     df_map['report'] = report_template()
+    df_map['report'] = generate_report_rows(df_map)
 
-
+    report_to_excel(df_map['report'])
 
 # Data Processing 
 
@@ -217,7 +220,7 @@ def generate_report_rows(df_map):
     
     df = df_map['report']
     df_c = df_map['collection']
-    df_d = df_map['processing']
+    df_p = df_map['processing']
     df_d = df_map['distribution']
     df_f = df_map['finance']
     
@@ -266,9 +269,6 @@ def generate_report_rows(df_map):
 
     return(df.fillna(0))
 
-
-
-
 # Utilities 
 
 def available_csvs(ngo):
@@ -304,6 +304,14 @@ def getMonthDays(element, year):
     if year % 4 == 0 & element == 2:
         result = 29
     return result
+
+
+def report_to_excel(report, ngo, programme):
+    name = ".".join(ngo, programme, str(REPORT_ENDDATE))
+    dest_xlsx = REPORT_FOLDER + ".".join(name, 'report', 'xlsx')
+    print('Report generating to: ' + dest_xlsx)
+    report.to_excel(dest_xlsx, index_label='label', merge_cells=False, sheet_name = name)
+    print('Done!')
 
 if __name__ == '__main__':
     generate_all_foodshare_reports()
