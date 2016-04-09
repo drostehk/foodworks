@@ -81,10 +81,6 @@ def generate_foodshare_report(ngo, programme):
 
     df_map.update(meta_csv_to_dataframe(ngo))
 
-    print(ngo)
-    print(programme)
-    print('***>>>\n')
-
     # Collection
     df_map['collection'] = clean_df(df_map, 'collection')
     df_map['collection'] = melt_df(df_map, 'collection', MELT_INDEX)
@@ -124,7 +120,6 @@ def map_csv_to_dataframe(ngo, fns, programme):
         
     for stage in STAGES + META_FILES_PROGRAMME + META_FILES_NGO:
         fns = filter(lambda fn: stage in fn, fns_in_programme)
-        print(fns)
         path = ROOT_FOLDER + '/' + ngo + '/'
         df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf_8') for fn in sorted(fns)])
 
@@ -193,11 +188,12 @@ def clean_finance(df_map):
     # pdb.set_trace()
 
     finance_end = finance_start - REPORT_DURATION_MONTHS
-    df.iloc[-finance_start:-finance_end]
+    df = df.iloc[-finance_start:-finance_end]
+
+    df.expenditure = df.expenditure.astype('float')
 
     REPORT_STARTDATE.month
     
-    print(df)
     return df
 
 def melt_df(df_map, key, index_cols):
