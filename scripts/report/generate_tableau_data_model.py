@@ -36,25 +36,42 @@ PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments",
 STAGES = ['collection','processing','distribution']
 META_FILES_PROGRAMME = ['beneficiary','finance']
 META_FILES_NGO = ['donors']
-META_FILES = ['units','i18n','map']
+#META_FILES = ['units','i18n','map']
+META_FILES = ['map']
 
-def generate_all_tableau_csv(year=datetime.datetime.now().year):
+def generate_all_tableau_csv():
 
     for stage, ngos in generate_structure().iteritems():
 
         for ngo, programmes in ngos.iteritems():
-
             # Selective processing of NGOS
-            if ngo in ['FoodLink', 'NLPRA']:
+            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink']:
                 continue
+            else:
+                for programme, sheets in programmes.iteritems():
+                    if ngo == 'PSC':
+                        if programmes in ['KC', 'TM', 'WTS', 'YMT']:
+                            genTableauCsv(ngo, programme)
+                    else:
+                        genTableauCsv(ngo, programme)
 
-            for programme, sheets in programmes.iteritems():
+def meta_csv_to_dataframe(ngo):
+    metas = {}
+    for meta in META_FILES:
+        df = pd.read_csv(ROOT_FOLDER + meta + '.csv')
 
-                #generate_foodshare_report(ngo, programme)
-                print(ngo + ' - ' + programme)
+        df = df[df.organisation_id == ngo]
 
+        if meta == 'map':
+            df = df[['category', 'canonical']]
 
-def generate_foodshare_report(ngo, programme):
+        df = df.drop_duplicates()
+
+        metas[meta] = df
+
+    return metas
+
+def generate_ngo_dataframe(ngo, programme):
     fns = available_csvs(ngo)
     df_map = map_csv_to_dataframe(ngo, fns, programme)
     return(df_map)
@@ -81,13 +98,20 @@ def available_csvs(ngo):
     return file_names
 
 
+#print(generate_ngo_dataframe('PCSS', 'General')['collection'].head())
+#print(generate_ngo_dataframe('PCSS', 'General')['donors'].head())
+#print()
+#generate_ngo_dataframe('PSC', 'KC')
+#print(available_csvs('PSC'))
+
 
 #print(available_csvs('PSC'))
 
 #print(map_csv_to_dataframe('PSC', '', 'SSP')['donors'])
-#print(generate_foodshare_report('PSC', 'SSP')['collection'])
+#print(generate_ngo_dataframe('PSC', 'SSP')['collection'])
 #generate_all_tableau_csv()
 
+#print(meta_csv_to_dataframe('PCSS')['map'])
 
 folder_dir = ROOT_FOLDER
 fresh_food = FRESH_FOOD_CATEGORIES
@@ -136,36 +160,23 @@ def getMonthDays(element, year):
     return result
 
 
-def merge_donor(ngo, year_list):
-    donorsmaster_name = ngo + '.donors.csv'
-    for year in year_list:
-        donorsfile_name = ngo + str(year) + '.donors.csv'
-        df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
 
-    return 0
-
-
-def genTableauCsv(ngo, year, isFoodwork = False):
+def genTableauCsv(ngo, program, isFoodwork = False):
     ## Set file name
 
-    datafile_name = ngo + '.' + str(year) + '.csv'
-    mapfile_name = ngo + '.map.csv'
-    donorsfile_name = ngo + '.donors.csv'
+    #datafile_name = generate_ngo_dataframe('PCSS', 'General')['collection']
+    #mapfile_name = generate_ngo_dataframe('PCSS', 'General')['map']
+    #donorsfile_name = generate_ngo_dataframe('PCSS', 'General')['donors']
+    '''
     distfile_name = ngo + '.' + str(year) + '.distribution.csv'
     benffile_name = ngo + '.' + str(year) + '.beneficiary.csv'
     procfile_name = ngo + '.' + str(year) + '.processing.csv'
     finfile_name = ngo + '.' + str(year) + '.finance.csv'
-
-    df = pd.read_csv(folder_dir + ngo + '/' + datafile_name)
-    df_map = pd.read_csv(folder_dir + ngo + '/' + mapfile_name)
-
-    df_donors = pd.read_csv(folder_dir + ngo + '/' + donorsfile_name)
-
-
-    if os.path.isfile(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv'):
-        df = pd.concat([df, pd.read_csv(folder_dir + ngo + '/' + ngo + '.' + str(year - 1) + '.csv')])
-
-
+    '''
+    df = generate_ngo_dataframe(ngo, program)['collection']
+    #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
+    df_map = meta_csv_to_dataframe(ngo)['map']
+    df_donors = generate_ngo_dataframe(ngo, program)['donors']
 
     ## Collection
     # Reshape the dataframe
@@ -177,10 +188,10 @@ def genTableauCsv(ngo, year, isFoodwork = False):
 
     df = df[~df[['value']].isnull().any(axis=1)]
 
-    df_map = df_map[df_map.organisation_id == ngo]
+    #df_map = df_map[df_map.organisation_id == ngo]
 
-    df_map = df_map[['category', 'canonical']]
-    df_map = df_map.drop_duplicates()
+    #df_map = df_map[['category', 'canonical']]
+    #df_map = df_map.drop_duplicates()
     df_merge = pd.merge(df, df_map, how='left', left_on=['variable'], right_on=['category'])
     df_merge = df_merge.drop('category', 1)
 
@@ -194,7 +205,7 @@ def genTableauCsv(ngo, year, isFoodwork = False):
     df_merge['year'] = df_merge.apply(getYear, axis=1)
     df_merge['month'] = df_merge.apply(getMonth, axis=1)
     df_merge['day'] = df_merge.apply(getDay, axis=1)
-    df_merge = df_merge[df_merge['year'] == year]
+    #df_merge = df_merge[df_merge['year'] == year]
 
     #print(df_merge.head(20))
 
@@ -202,31 +213,21 @@ def genTableauCsv(ngo, year, isFoodwork = False):
     df_merge = df_merge[np.isfinite(df_merge['value'])]
 
     if(1):
-        print('exporting...')
-        dest='../../../../Tableau/Data/'
+        dest='tableau/data/'
         ## Export to Excel
-        file_dir = dest + ngo + '.' + str(year) + '.merge.csv'
+        file_dir = dest + ngo + '.' + program + '.merge.csv'
         df_merge.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
-        if isFoodwork == True:
-            file_dir = dest + ngo + '.' + str(year) + '.dist.csv'
-            df_dist.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
-
-            file_dir = dest + ngo + '.' + str(year) + '.proc.csv'
-            df_proc.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
-
-            file_dir = dest + ngo + '.' + str(year) + '.fin.csv'
-            df_fin.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
     #return(df_report.fillna(0))
 
-
+'''
 def report_to_excel(ngo, year, dest='../../../../Tableau/Data/'):
     file_dir = dest + ngo + '.' + str(year) + '.report.xlsx'
     print('Report generating to: ' + file_dir)
     genReport(ngo, year).to_excel(file_dir, index_label='label', merge_cells=False, sheet_name = ngo + '.' + str(year))
     print('Done!')
-
+'''
 ##report_to_excel('TSWN', 2015)
 
 def getRandomValue(element):
@@ -269,7 +270,7 @@ def dummy_data():
 
 
 def getAllMergeCsv():
-    file_list = (glob.glob('../../../../Tableau/Data/*[0-9].merge.csv'))
+    file_list = (glob.glob('Tableau/Data/*.merge.csv'))
 
     print('Merging ' + str(len(file_list)) + ' files...')
 
@@ -284,7 +285,7 @@ def getAllMergeCsv():
     s_ngo = lambda x: x.split("-")[0]
     frame['ngo'] = frame.organisation_id.apply(s_ngo)
 
-    frame.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
+    frame.to_csv("Tableau/Data/master.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
 
 
@@ -412,13 +413,14 @@ for ngo in ngo_list:
         genTableauCsv(ngo, yr, isFoodwork = False)
 '''
 
-genTableauCsv
+#genTableauCsv
 
 
-getAllMergeCsv()
+#getAllMergeCsv()
 #master_donor_address()
 
 
+#print(generate_structure())
 
-
-
+#generate_all_tableau_csv()
+getAllMergeCsv()
