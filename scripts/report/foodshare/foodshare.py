@@ -4,10 +4,11 @@ from __future__ import (absolute_import, division, print_function, unicode_liter
 
 import os
 import sys
-import datetime
 import numpy as np
 import pandas as pd
 import operator as op
+
+from datetime import datetime, timedelta, date, time
 
 # Ugly Hack
 sys.path.append( os.path.dirname(os.path.dirname(
@@ -27,7 +28,24 @@ META_FILES_PROGRAMME = ['beneficiary','finance']
 META_FILES_NGO = ['donors']
 META_FILES = ['units','i18n','map']
 
-def generate_all_foodshare_reports(year=datetime.datetime.now().year):
+def get_report_dates():
+    CURRENT_YEAR = datetime.now().year
+    REPORT_PERIOD_STARTDATES = [datetime.strptime(d, "%d/%m").replace(year=CURRENT_YEAR).date() for d in ['1/4','1/9','1/12']]
+    REPORT_PERIOD_ENDDATES   = [datetime.strptime(d, "%d/%m").replace(year=CURRENT_YEAR).date() for d in ['31/8','30/11','31/3']]
+
+    # Silly Hack
+    REPORT_PERIOD_STARTDATES[-1] = REPORT_PERIOD_STARTDATES[-1].replace(year=CURRENT_YEAR-1)
+
+    min_index = lambda values: min(xrange(len(values)), key=values.__getitem__)
+    period_index  = min_index([d - datetime.now().date() for d in REPORT_PERIOD_ENDDATES])
+
+    return map(lambda x : x[period_index], [REPORT_PERIOD_STARTDATES, REPORT_PERIOD_ENDDATES])
+
+REPORT_STARTDATE, REPORT_ENDDATE = get_report_dates()
+
+print(REPORT_STARTDATE, REPORT_ENDDATE)
+
+def generate_all_foodshare_reports(year=datetime.now().year):
 
     for stage, ngos in generate_structure().iteritems():
 
@@ -46,9 +64,13 @@ def generate_foodshare_report(ngo, programme):
     fns = available_csvs(ngo)
     df_map = map_csv_to_dataframe(ngo, fns, programme)
 
-    import pprint
-    pprint.pprint(df_map)
+    df_map['collection'] = clean_df(df_map, 'collection')
 
+    import pdb
+    pdb.set_trace()
+
+
+# Data Processing 
 
 def map_csv_to_dataframe(ngo, fns, programme):
 
@@ -59,19 +81,31 @@ def map_csv_to_dataframe(ngo, fns, programme):
     for stage in STAGES + META_FILES_PROGRAMME + META_FILES_NGO:
         fns = filter(lambda fn: stage in fn, fns_in_programme)
         path = ROOT_FOLDER + '/' + ngo + '/'
-        df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns]).shape
+        df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
 
     return df_map
 
-def available_csvs(ngo):
-    return os.listdir(ROOT_FOLDER + ngo)
 
+def clean_df(df_map, key):
+    df = df_map[key]
+    df = df_slice_report_period(df,'datetime')
+    df = df.fillna(0)
+   
+    return df
 
+def df_slice_report_period(df, dt_key):
+    df[dt_key] = pd.to_datetime(df[dt_key])
 
-
+    start = df[dt_key].searchsorted(datetime.combine(REPORT_STARTDATE, time()))[0]
+    end = df[dt_key].searchsorted(datetime.combine(REPORT_ENDDATE, time()))[0]
+    
+    return df.iloc[start:end]
 
 
 # Utilities 
+
+def available_csvs(ngo):
+    return os.listdir(ROOT_FOLDER + ngo)
 
 def check_fresh(element):
     return element.canonical in FRESH_FOOD_CATEGORIES
