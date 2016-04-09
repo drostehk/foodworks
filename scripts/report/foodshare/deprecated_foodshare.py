@@ -34,6 +34,7 @@
 	# df = df[df.apply(getYear, axis=1) == year]
 	# df = df.fillna(0)
 
+	# df = df_map['collection']
 	# melt_head = ['datetime', 'donor', 'organisation_id', 'programme']
 	# rest_col = [x for x in list(df.columns.values) if x not in melt_head]
 
@@ -43,6 +44,7 @@
 	# df = df[df['value'].notnull()]
 
 	#print(df.head(100))
+	# #print(df.head(100))
 	# df_map = df_map[df_map.organisation_id == ngo]
 	# df_map = df_map[['category', 'canonical']]
 	# df_map = df_map.drop_duplicates()
@@ -53,7 +55,7 @@
 	# df_donors = df_donors[['id', 'foodshare_category']]
 	# df_donors.rename(columns={'id': 'id', 'foodshare_category': 'donor_category'}, inplace=True)
 
-	#print(df_donors)
+	# #print(df_donors)
 
 	# df_merge = pd.merge(df_merge, df_donors, how='left', left_on=['donor'], right_on=['id'])
 	# df_merge = df_merge.drop('id', 1)

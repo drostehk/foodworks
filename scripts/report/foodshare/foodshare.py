@@ -23,6 +23,8 @@ FRESH_FOOD_CATEGORIES = ["Vegetable", "Leafy Veg", "Ground Veg",
 PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments", 
                             "Drinks", "Milk Powder", "Packaged Other"]
 
+MELT_INDEX = ['datetime', 'donor', 'organisation_id', 'programme']
+    
 STAGES = ['collection','processing','distribution']
 META_FILES_PROGRAMME = ['beneficiary','finance']
 META_FILES_NGO = ['donors']
@@ -71,6 +73,7 @@ def generate_foodshare_report(ngo, programme):
     df_map['collection'] = df_merge(df_map, 'collection', 'map', 'variable', 'category')
     df_map['collection'] = df_merge(df_map, 'collection', 'donors', 'donor', 'id')
 
+    df_map['collection'] = melt_df(df_map, 'collection', MELT_INDEX)
 
     import pdb
     pdb.set_trace()
@@ -129,6 +132,14 @@ def clean_donors(df_map):
 
     return df
 
+def melt_df(df_map, key, index_cols):
+    df = df_map[key] 
+    rest_cols = [col for col in list(df.columns.values) if col not in index_cols]
+    df = pd.melt(df, id_vars=index_cols, value_vars=rest_cols)
+    df = df[df.value != 0]
+    df = df[df['value'].notnull()]
+    
+    return df
 
 def df_slice_report_period(df, dt_key):
     df[dt_key] = pd.to_datetime(df[dt_key])
