@@ -68,3 +68,6 @@ data/
 #Caching
 progress.json
 structure.json
+
+#Tableau
+tableau/
