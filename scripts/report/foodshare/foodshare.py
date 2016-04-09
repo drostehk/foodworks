@@ -24,7 +24,10 @@ PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments",
                             "Drinks", "Milk Powder", "Packaged Other"]
 
 MELT_INDEX = ['datetime', 'donor', 'organisation_id', 'programme']
-    
+FINANCE_INDEX = ['month', 'income', 'expenditure']
+REPORT_INDEX = ['datetime', 'donor', 'organisation_id', 'programme', 'variable',
+                'value', 'canonical', 'donor_category', 'isFresh', 'year', 'month', 'day']
+
 STAGES = ['collection','processing','distribution']
 META_FILES_PROGRAMME = ['beneficiary','finance']
 META_FILES_NGO = ['donors']
@@ -32,8 +35,10 @@ META_FILES = ['units','i18n','map']
 
 def get_report_dates():
     CURRENT_YEAR = datetime.now().year
-    REPORT_PERIOD_STARTDATES = [datetime.strptime(d, "%d/%m").replace(year=CURRENT_YEAR).date() for d in ['1/4','1/9','1/12']]
-    REPORT_PERIOD_ENDDATES   = [datetime.strptime(d, "%d/%m").replace(year=CURRENT_YEAR).date() for d in ['31/8','30/11','31/3']]
+    REPORT_PERIOD_STARTDATES = [datetime.strptime(d, "%d/%m").replace(
+                                year=CURRENT_YEAR).date()for d in ['1/4','1/9','1/12']]
+    REPORT_PERIOD_ENDDATES   = [datetime.strptime(d, "%d/%m").replace(
+                                year=CURRENT_YEAR).date() for d in ['31/8','30/11','31/3']]
 
     # Silly Hack
     REPORT_PERIOD_STARTDATES[-1] = REPORT_PERIOD_STARTDATES[-1].replace(year=CURRENT_YEAR-1)
@@ -45,7 +50,7 @@ def get_report_dates():
 
 REPORT_STARTDATE, REPORT_ENDDATE = get_report_dates()
 
-print(REPORT_STARTDATE, REPORT_ENDDATE)
+print('GENERATING REPORT FOR PERIOD\n ', REPORT_STARTDATE, '-', REPORT_ENDDATE)
 
 def generate_all_foodshare_reports(year=datetime.now().year):
 
@@ -54,10 +59,14 @@ def generate_all_foodshare_reports(year=datetime.now().year):
         for ngo, programmes in ngos.iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['FoodLink', 'NLPRA']:
+            if ngo in ['FoodLink', 'NLPRA','ActionHealth']:
                 continue
 
             for programme, sheets in programmes.iteritems():
+
+                # Selective processing of NGOS PROGRAMMES
+                if ngo+programme in ['PSCSSP']:
+                    continue
 
                 generate_foodshare_report(ngo, programme)
 
@@ -68,15 +77,36 @@ def generate_foodshare_report(ngo, programme):
 
     df_map.update(meta_csv_to_dataframe(ngo))
 
+    print(ngo)
+    print(programme)
+    print('***>>>\n')
+
     # Collection
     df_map['collection'] = clean_df(df_map, 'collection')
+    df_map['collection'] = melt_df(df_map, 'collection', MELT_INDEX)
+
     df_map['collection'] = df_merge(df_map, 'collection', 'map', 'variable', 'category')
     df_map['collection'] = df_merge(df_map, 'collection', 'donors', 'donor', 'id')
 
-    df_map['collection'] = melt_df(df_map, 'collection', MELT_INDEX)
+    df_map['collection'] = datetime_features(df_map, 'collection')
+    df_map['collection'] = clean_collection(df_map)
+    
+    df_map['collection'] = df_map['collection'][REPORT_INDEX]
 
-    import pdb
-    pdb.set_trace()
+    # Processing
+    df_map['processing'] = clean_df(df_map, 'processing')
+    df_map['processing'] = datetime_features(df_map, 'processing')
+    
+    # Distribution
+    df_map['distribution'] = clean_df(df_map, 'distribution')
+    df_map['distribution'] = datetime_features(df_map, 'distribution')
+
+    # Fincances
+    df_map['finance'] = clean_finance(df_map)
+
+    # Report
+    df_map['report'] = report_template()
+
 
 
 # Data Processing 
@@ -90,20 +120,19 @@ def map_csv_to_dataframe(ngo, fns, programme):
     for stage in STAGES + META_FILES_PROGRAMME + META_FILES_NGO:
         fns = filter(lambda fn: stage in fn, fns_in_programme)
         path = ROOT_FOLDER + '/' + ngo + '/'
-        df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
+        df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf_8') for fn in fns])
 
     # Clean Donors
 
-    df_map['donors'] = clean_donors()
+    df_map['donors'] = clean_donors(df_map)
 
     return df_map
-
 
 
 def meta_csv_to_dataframe(ngo):
     metas = {}
     for meta in META_FILES:
-        df = pd.read_csv(ROOT_FOLDER + meta + '.csv')
+        df = pd.read_csv(ROOT_FOLDER + meta + '.csv',encoding='utf_8')
 
         df = df[df.organisation_id == ngo]
 
@@ -130,11 +159,25 @@ def clean_donors(df_map):
     df = df.rename(columns={'foodshare_category': 'donor_category'})
     df['donor_category'] = df['donor_category'].astype(basestring)
 
+    # TODO : Check this line: WARNING | MART
+    df = df[df['donor_category'].notnull()]
+
     return df
+
+def clean_collection(df_map):
+    df = df_map['collection']
+    df['isFresh'] = df.canonical.isin(FRESH_FOOD_CATEGORIES)
+    return df
+
+def clean_finance(df_map):
+    df = df_map['finance']
+    df.columns = FINANCE_INDEX
+    df['month_num'] = (df.index + 1)
 
 def melt_df(df_map, key, index_cols):
     df = df_map[key] 
     rest_cols = [col for col in list(df.columns.values) if col not in index_cols]
+
     df = pd.melt(df, id_vars=index_cols, value_vars=rest_cols)
     df = df[df.value != 0]
     df = df[df['value'].notnull()]
@@ -151,8 +194,21 @@ def df_slice_report_period(df, dt_key):
 
 def df_merge(df_map, key_left, key_right, merge_key_left, merge_key_right):
     df = pd.merge(df_map[key_left], df_map[key_right], how='left', left_on=[merge_key_left], right_on=[merge_key_right])
-    df = df_merge.drop(merge_key_right, 1)
+    df = df.drop(merge_key_right, 1)
 
+    return df
+
+def datetime_features(df_map, key):
+    df = df_map[key]
+
+    df['year'] = df.apply(lambda e: e.datetime.year, axis=1)
+    df['month'] = df.apply(lambda e: e.datetime.month, axis=1)
+    df['day'] = df.apply(lambda e: e.datetime.day, axis=1)
+    return df
+
+def report_template():
+    columns = ['element'] + map(str, range(1,13))
+    df = pd.DataFrame(columns=columns)
     return df
 
 
@@ -160,18 +216,6 @@ def df_merge(df_map, key_left, key_right, merge_key_left, merge_key_right):
 
 def available_csvs(ngo):
     return os.listdir(ROOT_FOLDER + ngo)
-
-def check_fresh(element):
-    return element.canonical in FRESH_FOOD_CATEGORIES
-
-def getYear(element):
-    return element.datetime.year
-
-def getMonth(element):
-    return element.datetime.month
-
-def getDay(element):
-    return element.datetime.day
 
 def find(the_series, the_value):
     return (''.join(map(str,[the_series for the_series, x in enumerate(the_series) if x == the_value])))
