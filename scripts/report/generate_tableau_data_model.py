@@ -216,7 +216,11 @@ def genTableauCsv(ngo, program, isFoodwork = False):
     df_merge = df_merge[np.isfinite(df_merge['value'])]
 
     if(1):
-        dest='tableau/data/'
+        dest = 'tableau/data/'
+
+        if not os.path.exists(dest):
+            os.makedirs(dest)
+            
         ## Export to Excel
         file_dir = dest + ngo + '.' + program + '.merge.csv'
         df_merge.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
@@ -273,7 +277,7 @@ def dummy_data():
 
 
 def getAllMergeCsv():
-    file_list = (glob.glob('Tableau/Data/*.merge.csv'))
+    file_list = (glob.glob('tableau/data/*.merge.csv'))
 
     print('Merging ' + str(len(file_list)) + ' files...')
 
@@ -288,7 +292,7 @@ def getAllMergeCsv():
     s_ngo = lambda x: x.split("-")[0]
     frame['ngo'] = frame.organisation_id.apply(s_ngo)
 
-    frame.to_csv("Tableau/Data/master.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
+    frame.to_csv("tableau/data/master.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
 
 
