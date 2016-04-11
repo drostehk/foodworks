@@ -58,21 +58,19 @@ print('GENERATING REPORT FOR PERIOD\n ', REPORT_STARTDATE, '-', REPORT_ENDDATE)
 
 def generate_all_foodshare_reports(year=datetime.now().year):
 
-    for stage, ngos in generate_structure().iteritems():
+    for ngo, programmes in generate_structure()['collection'].iteritems():
 
-        for ngo, programmes in ngos.iteritems():
+        # Selective processing of NGOS
+        if ngo in ['FoodLink', 'NLPRA','ActionHealth']:
+            continue
 
-            # Selective processing of NGOS
-            if ngo in ['FoodLink', 'NLPRA','ActionHealth']:
+        for programme, sheets in programmes.iteritems():
+
+            # Selective processing of NGOS PROGRAMMES
+            if ngo+programme in ['PSCSSP']:
                 continue
 
-            for programme, sheets in programmes.iteritems():
-
-                # Selective processing of NGOS PROGRAMMES
-                if ngo+programme in ['PSCSSP']:
-                    continue
-
-                generate_foodshare_report(ngo, programme)
+            generate_foodshare_report(ngo, programme)
 
 
 def generate_foodshare_report(ngo, programme):
