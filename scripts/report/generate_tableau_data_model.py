@@ -51,7 +51,7 @@ def generate_all_tableau_csv():
             else:
                 for programme, sheets in programmes.iteritems():
                     if ngo == 'PSC':
-                        if programmes in ['KC', 'TM', 'WTS', 'YMT']:
+                        if programme in ['KC', 'TM', 'WTS', 'YTM']:
                             genTableauCsv(ngo, programme)
                     else:
                         genTableauCsv(ngo, programme)
@@ -176,6 +176,7 @@ def genTableauCsv(ngo, program, isFoodwork = False):
     finfile_name = ngo + '.' + str(year) + '.finance.csv'
     '''
     df = generate_ngo_dataframe(ngo, program)['collection']
+    df = df.drop_duplicates()
     #print(df)
     #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
     df_map = meta_csv_to_dataframe(ngo)['map']
@@ -291,6 +292,7 @@ def getAllMergeCsv():
     # Extract NGO name
     s_ngo = lambda x: x.split("-")[0]
     frame['ngo'] = frame.organisation_id.apply(s_ngo)
+    frame = frame.drop_duplicates()
 
     frame.to_csv("tableau/data/master.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
 
