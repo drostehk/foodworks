@@ -42,19 +42,20 @@ META_FILES = ['map']
 
 def generate_all_tableau_csv():
 
-    for stage, ngos in generate_structure().iteritems():
+def generate_all_foodshare_reports(year=datetime.now().year):
 
-        for ngo, programmes in ngos.iteritems():
-            # Selective processing of NGOS
-            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink']:
-                continue
-            else:
-                for programme, sheets in programmes.iteritems():
-                    if ngo == 'PSC':
-                        if programme in ['KC', 'TM', 'WTS', 'YTM']:
-                            genTableauCsv(ngo, programme)
-                    else:
+    for ngo, programmes in generate_structure()['collection'].iteritems():
+
+        # Selective processing of NGOS
+        if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink']:
+            continue
+        else:
+            for programme, sheets in programmes.iteritems():
+                if ngo == 'PSC':
+                    if programme in ['KC', 'TM', 'WTS', 'YTM']:
                         genTableauCsv(ngo, programme)
+                else:
+                    genTableauCsv(ngo, programme)
 
 def meta_csv_to_dataframe(ngo):
     metas = {}
