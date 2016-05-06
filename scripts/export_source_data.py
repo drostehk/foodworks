@@ -59,7 +59,9 @@ def check_or_set(base, key, status=None):
 /SAVE PROGRESS
 '''
 
-def export_source_sheets():
+def export_source_sheets(iteration=1):
+
+    print('\n### ITERATION ### {}'.format(iteration))
     
     for stage, ngos in generate_structure().iteritems():
 
@@ -115,12 +117,12 @@ def export_source_sheets():
     
                 except HTTPError as e:
                     print(e)
-                    export_source_sheets()
+                    export_source_sheets(iteration+1)
 
                 except BaseException as e:
                     print(e)
                     check_or_set(progress[stage][ngo], programme, False)
-                    export_source_sheets()
+                    export_source_sheets(iteration+1)
 
     # Refector the Terms
     # ss.terms_sheets_to_csv()
