@@ -14,6 +14,11 @@ from core.connector import GoogleSourceClient
 from core.transform import SheetToCanonical
 from core.drive import generate_structure
 
+# SKIP_NGO = ['FoodLink', 'NLPRA']
+SKIP_NGO = ['NLPRA']
+# SKIP_STAGES = ['distribution', 'processing', 'collection']
+SKIP_STAGES = []
+
 '''
 SAVE PROGRESS 
 '''
@@ -61,13 +66,13 @@ def export_source_sheets():
         check_or_set(progress, stage)
 
         # Selective processing of stages
-        # if stage in ['distribution', 'processing', 'collection']:
-            # continue
+        if stage in SKIP_STAGES:
+            continue
         
         for ngo, programmes in ngos.iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['FoodLink', 'NLPRA']:
+            if ngo in SKIP_NGO:
                 continue
 
             check_or_set(progress[stage], ngo)
