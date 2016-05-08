@@ -223,7 +223,7 @@ class GoogleSourceSheet(Spreadsheet):
         
         # for ws in wss[50:]:
         # DEVELOPER
-        for ws in wss[10:20]:
+        for ws in wss[13:20]:
         # for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -245,7 +245,8 @@ class GoogleSourceSheet(Spreadsheet):
         if not any(values[2]):
             print('>> NO DATA <<')
             return
-        collection = pd.DataFrame(values)
+        
+        collection = pd.DataFrame(self.get_data_rows(values))
 
         collection.columns = collection.iloc[1].tolist()
         donors = collection.iloc[header_offset:, 1]
@@ -254,15 +255,22 @@ class GoogleSourceSheet(Spreadsheet):
         raw_df = collection.ix[header_offset:, self.schema]
         raw_df.columns = self.schema
         loc = len(self.df)
+
         for ridx, row in raw_df.iterrows():
             donor = donors[ridx]
             timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-            # TODO: Ignore if there are no values in the standard row.
             self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(donor, timestamp, row.tolist())
             loc += 1
-        collection = collection.replace('', np.nan, regex=True)
-        bool_mask = collection[collection.columns[-1]].notnull().apply(any, axis=1)
+
+        # ECF HACK - UNSURE IF HURTS FOODSHARE
+
+        # collection = collection.replace('', np.nan, regex=True)
+        # bool_mask = collection[collection.columns[-1]].notnull().apply(any, axis=1)
+        # bool_mask[0:2] = False
+
+        bool_mask = collection.apply(lambda x : any(x), axis=1)
         bool_mask[0:2] = False
+
         for ridx, row in collection.loc[bool_mask].iterrows():
             timestamp = self.weekday_to_date(collection.iloc[0,1], row[0])
             donor = row[1]
@@ -383,6 +391,9 @@ class GoogleSourceSheet(Spreadsheet):
                 tempList = tempList + [timestamp]
             raw_df['datetime'] = tempList
             self.df = self.df.append(raw_df,ignore_index = True)    
+
+    def get_data_rows(self, rows):
+        return [row for row in rows if any(row)]
 
 def _is_week_number(title):
     if not title.isdigit():
