@@ -16,8 +16,10 @@ from core.drive import generate_structure
 
 # SKIP_NGO = ['FoodLink', 'NLPRA']
 SKIP_NGO = ['NLPRA']
+ONLY_NGO = ['FoodLink']
 # SKIP_STAGES = ['distribution', 'processing', 'collection']
 SKIP_STAGES = []
+ONLY_STAGES = []
 
 '''
 SAVE PROGRESS 
@@ -70,11 +72,19 @@ def export_source_sheets(iteration=1):
         # Selective processing of stages
         if stage in SKIP_STAGES:
             continue
+
+        # Exclusive processing of stages
+        if ONLY_STAGES and not stage in ONLY_STAGES:
+            continue
         
         for ngo, programmes in ngos.iteritems():
 
             # Selective processing of NGOS
             if ngo in SKIP_NGO:
+                continue
+
+            # Exclusive processing of NGOS
+            if ONLY_NGO and not ngo in ONLY_NGO:
                 continue
 
             check_or_set(progress[stage], ngo)
