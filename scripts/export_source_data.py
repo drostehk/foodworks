@@ -17,9 +17,9 @@ from core.drive import generate_structure
 # SKIP_NGO = ['FoodLink', 'NLPRA']
 SKIP_NGO = ['NLPRA']
 ONLY_NGO = ['FoodLink']
-# SKIP_STAGES = ['distribution', 'processing', 'collection']
+# SKIP_STAGES = ['collection']
 SKIP_STAGES = []
-ONLY_STAGES = ['collection']
+ONLY_STAGES = ['distribution', 'processing']
 
 '''
 SAVE PROGRESS 

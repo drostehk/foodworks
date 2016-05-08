@@ -112,12 +112,14 @@ class GoogleSourceSheet(Spreadsheet):
         self.chinese_other_type = u'其他'
         self.chinese_other_volume = u'其他 (公斤)'
         self.chinese_other_header_cols = 2
+        self.chinese_other_value_cols = -1
 
         # ECF Settings
         self.english_weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
         self.english_other_type = 'Other'
         self.english_other_volume = u'Other (KG)'
         self.english_other_header_cols = 5
+        self.english_other_value_cols = -4
         self.english_unit = u'Unit'
         self.english_quantity = u'Quantity'
         self.english_unit_weight = u'Unit Weight'
@@ -129,6 +131,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.other_type = self.chinese_other_type
         self.other_volume = self.chinese_other_volume
         self.other_header_cols = self.chinese_other_header_cols
+        self.other_value_cols = self.chinese_other_value_cols
         self.unit = None
         self.quantity = None
         self.unit_weight = None
@@ -185,6 +188,7 @@ class GoogleSourceSheet(Spreadsheet):
             if metadata['parsing_code'] == 'ecf':
                 print('PARSING CODE : ECF')
                 self.other_header_cols = self.english_other_header_cols
+                self.other_value_cols = self.english_other_value_cols
 
         # Programme Settings 
         # TODO ECF also has PRogrammes in other stages.
@@ -221,9 +225,8 @@ class GoogleSourceSheet(Spreadsheet):
         wss = self.collect_week_sheets()
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
         
-        # for ws in wss[50:]:
         # DEVELOPER
-        for ws in wss[13:20]:
+        for ws in wss[13:17]:
         # for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -262,19 +265,15 @@ class GoogleSourceSheet(Spreadsheet):
             self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(donor, timestamp, row.tolist())
             loc += 1
 
-        # ECF HACK - UNSURE IF HURTS FOODSHARE
-
-        # collection = collection.replace('', np.nan, regex=True)
-        # bool_mask = collection[collection.columns[-1]].notnull().apply(any, axis=1)
-        # bool_mask[0:2] = False
-
-        bool_mask = collection.apply(lambda x : any(x), axis=1)
+        collection = collection.replace('', np.nan, regex=True)
+        bool_mask = collection[[collection.columns[self.other_value_cols]]].notnull().apply(any, axis=1)
         bool_mask[0:2] = False
 
         for ridx, row in collection.loc[bool_mask].iterrows():
             timestamp = self.weekday_to_date(collection.iloc[0,1], row[0])
             donor = row[1]
             for idx, food_type in enumerate(row[self.other_type]):
+                print(idx, food_type)
                 if food_type is not np.nan:
                     food_volume = row[self.other_volume][idx]
                     self.df.ix[(self.df.donor == donor) & (self.df.datetime == timestamp), food_type.strip()] = float(food_volume)
@@ -283,12 +282,15 @@ class GoogleSourceSheet(Spreadsheet):
         return [self.org, self.programme, timestamp, donor] + std_values
 
     def create_translations_keys(self, terms):
+        # TODO Support English Keys
         self.terms_to_sheet('Translations', terms)
 
     def create_mappings_keys(self, terms):
+        # TODO Support English Keys
         self.terms_to_sheet('Mappings', terms)
 
     def create_units_keys(self, terms):
+        # TODO Support English Keys
         self.terms_to_sheet('Units', terms)
 
     def terms_to_sheet(self, sheet_name, terms):
@@ -338,14 +340,16 @@ class GoogleSourceSheet(Spreadsheet):
     def parse_processing(self):
         wss = self.collect_week_sheets()
         # DEVELOPER
-        # for ws in wss[10:20]:
-        for ws in wss:
+        for ws in wss[13:17]:
+        # for ws in wss:
             self.parse_processing_weeksheet(ws)
         return self.df
 
     def parse_distribution(self):
         wss = self.collect_week_sheets()
-        for ws in wss:
+        # DEVELOPER
+        for ws in wss[13:17]:
+        # for ws in wss:
             self.parse_dist_weeksheet(ws)
         return self.df
 
@@ -404,3 +408,6 @@ def _is_week_number(title):
         return False
     else:
         return True
+
+def stop():
+    import pdb; pdb.set_trace()
