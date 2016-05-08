@@ -107,9 +107,31 @@ class GoogleSourceSheet(Spreadsheet):
         self.stage = stage
         self.year = year
 
+        # FoodShare Settings
         self.chinese_weekdays = [u'星期一', u'星期二', u'星期三', u'星期四', u'星期五', u'星期六', u'星期日']
-        self.chinese_type = u'其他'
-        self.chinese_volume = u'其他 (公斤)'
+        self.chinese_other_type = u'其他'
+        self.chinese_other_volume = u'其他 (公斤)'
+        self.chinese_other_header_cols = 2
+
+        # ECF Settings
+        self.english_weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        self.english_other_type = 'Other'
+        self.english_other_volume = u'Other (KG)'
+        self.english_other_header_cols = 5
+        self.english_unit = u'Unit'
+        self.english_quantity = u'Quantity'
+        self.english_unit_weight = u'Unit Weight'
+
+        # Default Settings 
+        self.parsing_code = 'foodshare'
+        self.language = 'zh_HK'
+        self.weekdays = self.chinese_weekdays
+        self.other_type = self.chinese_other_type
+        self.other_volume = self.chinese_other_volume
+        self.other_header_cols = self.chinese_other_header_cols
+        self.unit = None
+        self.quantity = None
+        self.unit_weight = None
         
         if(stage == "Collection"):
             self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
@@ -123,8 +145,8 @@ class GoogleSourceSheet(Spreadsheet):
 
         self.df = pd.DataFrame(columns=self.std_cols)
 
-        self.set_schema()
         self.parse_meta_sheet()
+        self.set_schema()
 
     def parse_cover_sheet(self):
         if self.stage in ['Collection', 'Distribution', 'Processing']:
@@ -133,15 +155,14 @@ class GoogleSourceSheet(Spreadsheet):
             cover = pd.DataFrame(values)
             cover.columns = cover.iloc[0]
             cover = cover.ix[1:]
-            # print(cover)
             return cover
 
     def collect_week_sheets(self):
         return [ws for ws in self.worksheets() if _is_week_number(ws.title)]
 
-    def weekday_to_date(self, monday_date_as_str , chinese_week_day):
+    def weekday_to_date(self, monday_date_as_str , week_day):
         monday_date = datetime.datetime.strptime(monday_date_as_str, '%Y-%m-%d')
-        days_offset = self.chinese_weekdays.index(chinese_week_day)
+        days_offset = self.weekdays.index(week_day)
         record_date = monday_date + datetime.timedelta(days=days_offset)
         return record_date
 
@@ -149,6 +170,25 @@ class GoogleSourceSheet(Spreadsheet):
         ws = self.worksheet('meta')
         metadata = dict(zip(ws.row_values(1), ws.row_values(2)))
         self.schema_version = metadata['schema_version']
+
+        # TODO Break this up into seperate parsing subclasses instead of
+        # having the logic literred throughout this one class
+
+        # Language Settings 
+        if 'language' in metadata:
+            self.language = metadata['language']
+            if metadata['language'] == 'en':
+                for val in ['weekdays', 'other_type', 'other_volume', 'unit', 'quantity', 'unit_weight']:
+                    setattr(self, val, getattr(self,'english_'+val))
+        if 'parsing_code' in metadata:
+            self.parsing_code = metadata['parsing_code']
+            if metadata['parsing_code'] == 'ecf':
+                print('PARSING CODE : ECF')
+                self.other_header_cols = self.english_other_header_cols
+
+        # Programme Settings 
+        # TODO ECF also has PRogrammes in other stages.
+
         if self.stage == 'Collection':
             self.programme = metadata['programme']
 
@@ -156,8 +196,13 @@ class GoogleSourceSheet(Spreadsheet):
         ws = self.worksheet('1')
         if self.stage == 'Collection':
             col_headers = ws.get_all_values()[1][2:]
-            schema_items = col_headers[:col_headers.index(self.chinese_type)]
-            schema_items = schema_items + col_headers[col_headers.index(self.chinese_volume)+1:-2]
+            idx = col_headers.index(self.other_type)
+            schema_items = col_headers[:idx]
+
+            offset = self.other_header_cols
+            idx = col_headers.index(self.other_volume) +1
+            schema_items += col_headers[idx:-offset]
+
             self.col_headers = col_headers
             self.schema = schema_items
         elif self.stage == 'Distribution':
@@ -177,7 +222,9 @@ class GoogleSourceSheet(Spreadsheet):
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
         
         # for ws in wss[50:]:
-        for ws in wss:
+        # DEVELOPER
+        for ws in wss[10:20]:
+        # for ws in wss:
             self.parse_collection_weeksheet(ws)
 
         self.df.datetime = pd.to_datetime(self.df.datetime)
@@ -195,6 +242,9 @@ class GoogleSourceSheet(Spreadsheet):
         print('Parsing Week', ws.title)
         header_offset = 2
         values = ws.get_all_values()
+        if not any(values[2]):
+            print('>> NO DATA <<')
+            return
         collection = pd.DataFrame(values)
 
         collection.columns = collection.iloc[1].tolist()
@@ -216,9 +266,9 @@ class GoogleSourceSheet(Spreadsheet):
         for ridx, row in collection.loc[bool_mask].iterrows():
             timestamp = self.weekday_to_date(collection.iloc[0,1], row[0])
             donor = row[1]
-            for idx, food_type in enumerate(row[self.chinese_type]):
+            for idx, food_type in enumerate(row[self.other_type]):
                 if food_type is not np.nan:
-                    food_volume = row[self.chinese_volume][idx]
+                    food_volume = row[self.other_volume][idx]
                     self.df.ix[(self.df.donor == donor) & (self.df.datetime == timestamp), food_type.strip()] = float(food_volume)
 
     def standard_row(self, donor, timestamp, std_values):
@@ -279,6 +329,8 @@ class GoogleSourceSheet(Spreadsheet):
 
     def parse_processing(self):
         wss = self.collect_week_sheets()
+        # DEVELOPER
+        # for ws in wss[10:20]:
         for ws in wss:
             self.parse_processing_weeksheet(ws)
         return self.df

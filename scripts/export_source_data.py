@@ -19,7 +19,7 @@ SKIP_NGO = ['NLPRA']
 ONLY_NGO = ['FoodLink']
 # SKIP_STAGES = ['distribution', 'processing', 'collection']
 SKIP_STAGES = []
-ONLY_STAGES = []
+ONLY_STAGES = ['collection']
 
 '''
 SAVE PROGRESS 
@@ -61,14 +61,15 @@ def check_or_set(base, key, status=None):
 /SAVE PROGRESS
 '''
 
-def export_source_sheets(iteration=1):
+def export_source_sheets(iteration=1, skip_progress_check=False):
 
-    print('\n### ITERATION ### {}'.format(iteration))
+    print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
     
     for stage, ngos in generate_structure().iteritems():
 
         check_or_set(progress, stage)
 
+        print('\n### ITERATION ### {}'.format(iteration))
         # Selective processing of stages
         if stage in SKIP_STAGES:
             continue
@@ -94,45 +95,50 @@ def export_source_sheets(iteration=1):
         
             for programme, sheets in programmes.iteritems():
 
-                try:
+                # try:
 
-                    if progress_check(stage, ngo, programme):
-                        if progress[stage][ngo][programme]:
-                            print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                        else:
-                            print('\n>>> MUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                        continue
+                if not skip_progress_check and progress_check(stage, ngo, programme):
+                    print(skip_progress_check)
+                    if progress[stage][ngo][programme]:
+                        print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                    else:
+                        print('\n>>> MUCH FAIL >>> ', ngos, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                    continue
 
-                    print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+                
+                if not sheets:
+                    continue
+        
+                for sheet in sheets:
+                    ss = SheetToCanonical(**sheet)
                     
-                    if not sheets:
-                        continue
-            
-                    for sheet in sheets:
-                        ss = SheetToCanonical(**sheet)
-                        
-                        if stage == 'collection':
-                            ss.collection_sheets_to_csv()
-                            ss.donors_sheets_to_csv()
-                        
-                        elif stage == 'processing':
-                            ss.finance_sheets_to_csv()
-                            ss.processing_sheets_to_csv()
-                        
-                        elif stage == 'distribution':
-                            ss.distribution_sheets_to_csv()
-                            ss.beneficiary_sheets_to_csv()
+                    if stage == 'collection':
+                        ss.collection_sheets_to_csv()
+                        ss.donors_sheets_to_csv()
+                    
+                    elif stage == 'processing':
+                        ss.finance_sheets_to_csv()
+                        ss.processing_sheets_to_csv()
+                    
+                    elif stage == 'distribution':
+                        ss.distribution_sheets_to_csv()
+                        ss.beneficiary_sheets_to_csv()
 
+                if not skip_progress_check:
                     check_or_set(progress[stage][ngo], programme, True)
     
-                except HTTPError as e:
-                    print(e)
-                    export_source_sheets(iteration+1)
+                # except HTTPError as e:
+                #     print(e)
+                #     export_source_sheets(iteration+1, skip_progress_check)
 
-                except BaseException as e:
-                    print(e)
-                    check_or_set(progress[stage][ngo], programme, False)
-                    export_source_sheets(iteration+1)
+                # except Exception as e:
+                #     print(e)
+                #     if not skip_progress_check:
+                #         check_or_set(progress[stage][ngo], programme, False)
+                #         export_source_sheets(iteration+1, skip_progress_check)
+                #     else:
+                #         import pdb; pdb.set_trace()
 
     # Refector the Terms
     # ss.terms_sheets_to_csv()
