@@ -19,7 +19,8 @@ SKIP_NGO = ['NLPRA']
 ONLY_NGO = ['FoodLink']
 # SKIP_STAGES = ['collection']
 SKIP_STAGES = []
-ONLY_STAGES = ['distribution', 'processing']
+# ONLY_STAGES = ['collection', 'distribution', 'processing']
+ONLY_STAGES = ['collection']
 
 '''
 SAVE PROGRESS 
