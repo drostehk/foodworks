@@ -212,7 +212,7 @@ class ECFReport(object):
 
         is_selected = lambda fn : any(map(lambda p: p in fn, self.programmes))
 
-        donor_fns = [fn for fn in fns if 'donors' in fn]
+        donor_fns = [fn for fn in fns if 'donors' in fn and is_selected(fn)]
 
         dfs = []
         for programme in self.programmes:
@@ -253,14 +253,8 @@ class ECFReport(object):
         return df
 
     def clean_donors(self, df):
-
-        df = df[['id', 'foodshare_category']]
-        df = df.rename(columns={'foodshare_category': 'donor_category'})
-        df['donor_category'] = df['donor_category'].astype(basestring)
-
-        # TODO : Check this line: WARNING | MART
-        df = df[df['donor_category'].notnull()]
-
+        cols = ['id','name_en','location','programme']
+        df = df[cols]
         return df
 
     def clean_collection(self, df):
