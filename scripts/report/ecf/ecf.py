@@ -8,6 +8,8 @@ import pdb
 import numpy as np
 import pandas as pd
 import operator as op
+import xlsxwriter
+
 
 # TODO FEATURES 
 
@@ -47,7 +49,7 @@ class ECFReport(object):
         self.PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments", 
                                     "Drinks", "Milk Powder", "Packaged Other"]
 
-        self.COLLECTION_CATEGORIES_TABS = ['Cooked &- Fruit','Food Products']
+        self.COLLECTION_CATEGORIES_TABS = ['Cooked & Fruit','Food Products']
         self.COLLECTION_CATEGORIES = ['Cooked Food','Food Product']
 
         self.STAGES = ['collection',]
@@ -56,10 +58,11 @@ class ECFReport(object):
             'distribution': 'Distribution'
         }
 
-        self.MELT_INDEX = ['datetime', 'donor', 'organisation_id', 'programme']
+        self.SORT_KEY = ['datetime','programme','donor']
+        self.MELT_INDEX = ['datetime', 'donor', 'programme']
         self.FINANCE_INDEX = ['month', 'income', 'expenditure']
         self.REPORT_INDEX = ['datetime', 'donor', 'organisation_id', 'programme', 'variable',
-                        'value', 'canonical', 'donor_category', 'isFresh', 'year', 'month', 'day']
+                        'value', 'canonical', 'donor_category', 'year', 'month', 'day']
 
         self.META_FILES_PROGRAMME = []
         self.META_FILES_NGO = ['donors']
@@ -155,25 +158,28 @@ class ECFReport(object):
         df_map = {}
         df_map[self.stage] = self.map_source_to_dataframe(fns)
 
-        df_map['donors'] = self.map_donors_to_dataframe(fns)
-        df_map['meta'] = self.map_donors_to_dataframe(fns)
-
-        import pdb; pdb.set_trace()
+        # df_map['meta'] = self.map_meta_to_dataframe(fns)
 
         # Collection
         stage = self.stage
 
-        if stage is 'collection':
-            df_map[stage] = self.clean_df(df_map, stage)
-            df_map[stage] = self.melt_df(df_map, stage, MELT_INDEX)
 
-            df_map[stage] = self.df_merge(df_map, 'collection', 'map', 'variable', 'category')
-            df_map[stage] = self.df_merge(df_map, 'collection', 'donors', 'donor', 'id')
+        if stage == 'collection':
+            df_map['donors'] = self.map_donors_to_dataframe(fns)
+            df_map[stage] = self.melt_df(df_map[self.stage])
+            df_merge = df_map[stage].merge(df_map['donors'],how='left',left_on=['donor','programme'],right_on=['id','programme'])
 
-            df_map[stage] = self.datetime_features(df_map, 'collection')
-            df_map[stage] = self.clean_collection(df_map)
+            print(stage)
             
-            df_map[stage] = df_map['collection'][REPORT_INDEX].drop_duplicates()
+            cols = ['datetime','programme','name_en','location','category','kg']
+            df = df_merge[cols]
+            df.columns = ['datetime','programme','donor','address','category','kg']
+            df = df.sort_values(by=self.SORT_KEY)
+            df.set_index(self.SORT_KEY, inplace=True)
+        
+            self.report_to_excel(df)
+
+        # TODO Split up into Cooked Food // Packaged
 
         # Processing
         # NOT USED
@@ -181,17 +187,12 @@ class ECFReport(object):
         # Distribution
         
         if stage is 'distribution':
-            df_map[stage] = self.clean_df(df_map)
+            df_map['beneficiaries'] = self.map_beneficiaries_to_dataframe(fns)
             df_map[stage] = self.datetime_features(df_map)
 
         # Fincances
         # NOT USED
 
-        # Report
-        df_map['report'] = self.report_template()
-        df_map['report'] = self.generate_report_rows(df_map)
-
-        self.report_to_excel(df_map['report'])
 
     # Data Processing 
 
@@ -203,7 +204,7 @@ class ECFReport(object):
         fns = sorted([fn for fn in fns_in_stage if is_selected(fn)])
 
         df = pd.concat([pd.read_csv(self.base_path() + fn,
-            encoding='utf_8') for fn in fns_in_stage])
+            encoding='utf_8') for fn in fns])
 
         return self.clean_source(df)
 
@@ -246,6 +247,7 @@ class ECFReport(object):
 
     def clean_source(self, df):
         period = "{}/{}".format(self.MONTH_NUM, self.YEAR_NUM)
+        df.drop('organisation_id', axis=1, inplace=True)
         df.datetime = pd.to_datetime(df.datetime)
         df.sort_values(by=['datetime', 'programme', 'donor'], inplace=True)
         df.set_index('datetime').truncate(before=period, after=period).reset_index()
@@ -253,112 +255,10 @@ class ECFReport(object):
         return df
 
     def clean_donors(self, df):
-        cols = ['id','name_en','location','programme']
+        cols = ['id', 'name_en', 'location', 'programme']
         df = df[cols]
         return df
 
-    def clean_collection(self, df):
-        df['isFresh'] = df.canonical.isin(FRESH_FOOD_CATEGORIES)
-        return df
-
-    def melt_df(self, df_map, key, index_cols):
-        df = df_map[key] 
-        rest_cols = [col for col in list(df.columns.values) if col not in index_cols]
-
-        df = pd.melt(df, id_vars=index_cols, value_vars=rest_cols)
-        df = df[df.value != 0]
-        df = df[df['value'].notnull()]
-        
-        return df
-
-    def df_slice_report_period(self, df, dt_key):
-        df[dt_key] = pd.to_datetime(df[dt_key])
-
-        start = df[dt_key].searchsorted(datetime.combine(REPORT_STARTDATE, time()))[0]
-        end = df[dt_key].searchsorted(datetime.combine(REPORT_ENDDATE, time()))[0]
-        
-        return df.iloc[start:end]
-
-    def df_merge(self, df_map, key_left, key_right, merge_key_left, merge_key_right):
-        df = pd.merge(df_map[key_left], df_map[key_right], how='left', left_on=[merge_key_left], right_on=[merge_key_right])
-        df = df.drop(merge_key_right, 1)
-
-        return df
-
-    def datetime_features(self, df_map, key):
-        df = df_map[key]
-
-        df['year'] = df.apply(lambda e: e.datetime.year, axis=1)
-        df['month'] = df.apply(lambda e: e.datetime.month, axis=1)
-        df['day'] = df.apply(lambda e: e.datetime.day, axis=1)
-        return df
-
-    def report_template(self, ):
-        columns = ['element'] + map(str, range(1,13))
-        df = pd.DataFrame(columns=columns)
-        return df
-
-    def generate_report_rows(self, df_map):
-        
-        # ToDo : Refactor | MART
-        
-        # df = df_map['report']
-        # df_c = df_map['collection']
-        # df_d = df_map['distribution']
-        
-        # df.loc[len(df)+1] = genRow('Total volume of food collected (kg)', df_c.groupby('month').value.agg(['sum'])['sum'])
-        # df.loc[len(df)+1] = genRow('Total volume of fresh food (kg)', df_c[df_c['isFresh'] == True].groupby('month').value.agg(['sum'])['sum'])
-        # df.loc[len(df)+1] = genRow('Total volume of packaged food (kg)', df_c[df_c['isFresh'] == False].groupby('month').value.agg(['sum'])['sum'])
-
-        # df.loc[len(df)+1] = genRow('Number of food rescue days/ month', df_c.groupby('month').day.nunique())
-        # df.loc[len(df)+1] = genRow('Total Donors Count', df_c.groupby('month').donor.agg(['count'])['count'])
-        # df.loc[len(df)+1] = genRow('Unique Donors Count', df_c.groupby('month').donor.nunique())
-
-
-        # df.loc[len(df)+1] = genRow('Total beneficiaries', df_d.groupby('month').Distribution_Count.agg(['sum'])['sum'])
-
-        # df.loc[len(df)+1] = genRow('Compost volume (kg)', df_p.groupby('month').compost.agg(['sum'])['sum'])
-        # df.loc[len(df)+1] = genRow('Disposal volume (kg)', df_p.groupby('month').disposal.agg(['sum'])['sum'])
-        # df.loc[len(df)+1] = genRow('Storage volume (kg)', df_p.groupby('month').storage.agg(['sum'])['sum'])
-
-        # # import pdb
-        # # pdb.set_trace()
-
-        # df.loc[len(df)+1] = genRow('Donation/ Income ($)', df_f.groupby('month_num').income.agg(['sum'])['sum'])
-        # df.loc[len(df)+1] = genRow('Total expenditure ($)', df_f.groupby('month_num').expenditure.agg(['sum'])['sum'])
-
-        # df = df.fillna(0)
-
-        # df.loc[len(df)+1] = ['Total distribution volume (kg)'] + [a - e - f + g for a, e, f, g in zip(getList(df, 'Total volume of food collected (kg)'), getList(df, 'Compost volume (kg)'), getList(df, 'Disposal volume (kg)'), getList(df, 'Storage volume (kg)'))]
-        # df.loc[len(df)+1] = ['Percentage of food distributed for consumption (%)'] + [d / a for d, a in zip(getList(df, 'Total distribution volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
-        # df.loc[len(df)+1] = ['Compost Percentage (%)'] + [e / a for e, a in zip(getList(df, 'Compost volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
-        # df.loc[len(df)+1] = ['Disposal Percentrage (%)'] + [f / a for f, a in zip(getList(df, 'Disposal volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
-        # df.loc[len(df)+1] = ['Storage Percentage (%)'] + [g / a for g, a in zip(getList(df, 'Storage volume (kg)'), getList(df, 'Total volume of food collected (kg)'))]
-        # df.loc[len(df)+1] = ['Average amount of food rescued/ day (kg)'] + [a / h for a , h in zip(getList(df, 'Total volume of food collected (kg)'), getList(df, 'Number of food rescue days/ month'))]
-        # df.loc[len(df)+1] = ['Average beneficiaries/day '] + [a / h for a , h in zip(getList(df, 'Total beneficiaries'), getList(df, 'Number of food rescue days/ month'))]
-        # df.loc[len(df)+1] = ['Average volume of food distributed/ per person  / day (kg)'] + [i / d / h for i , d, h in zip(getList(df, 'Total distribution volume (kg)'), getList(df, 'Number of food rescue days/ month'), getList(df, 'Total beneficiaries'))]
-        # df.loc[len(df)+1] = ['Average cost/ beneficiary ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total beneficiaries'))]
-
-        # df.loc[len(df)+1] = ['Average cost/kg of rescued food ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total volume of food collected (kg)'))]
-        # df.loc[len(df)+1] = ['Average cost/ kg of distributed food ($)'] + [k / i for k , i in zip(getList(df, 'Total expenditure ($)'), getList(df, 'Total distribution volume (kg)'))]
-
-        # df = df.iloc[[0, 1, 2, 12, 13, 7, 14, 8, 15, 9, 16, 3, 17, 18, 19, 10, 11, 20, 21, 22, 4, 5]].copy()
-
-        # df.index = np.arange(1, len(df) + 1)
-
-        # # import pdb
-        # # pdb.set_trace()
-
-        # for donor in pd.unique(df_c['donor_category']):
-        #     if not isinstance(donor, basestring):
-        #         donor = "MISSING"
-        #     df.loc[len(df)+1] = genRow(donor.title() + ' (kg)', df_c[df_c['donor_category'] == donor].groupby('month').value.agg(['sum'])['sum'])
-
-        # df['Total'] = df.ix[:, 1:13].sum(axis=1)
-        # df['Average'] = df.ix[:, 1:13].mean(axis=1)
-
-        # return(df.fillna(0))
-        pass
 
     # Utilities 
 
@@ -368,50 +268,86 @@ class ECFReport(object):
     def available_csvs(self):
         return os.listdir(self.base_path())
 
-    def find(self, the_series, the_value):
-        return (''.join(map(str,[the_series for the_series, x in enumerate(the_series) if x == the_value])))
-
-    def fixAllmth(self, the_series):
-        the_list = []
-        check_list = the_series.index.tolist()
-        for mth in range(1, 13):
-            if(find(check_list, mth).isdigit()):
-                the_list = the_list + [the_series[mth]]
-            else:
-                the_list = the_list + [0]
-        return the_list
-
-    def getList(self, the_df, target_element):
-        return the_df[the_df.element == target_element].ix[: , 1:].values[0]
-
-    def genRow(self, the_name, the_series):
-        the_series = fixAllmth(the_series)
-        return [the_name] + the_series
-
-    def getMonthNum(self, element):
-        return ([i for i, x in enumerate(['Jan', 'Feb', 'Mar', 'Apr', 'May',
-                                'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) if x == element][0] + 1)
-
-    def getMonthDays(self, element, year):
-        monrh_days = [31, 28, 31, 30, 31, 30, 31, 30, 30, 31, 30, 31]
-        result = monrh_days[element - 1]
-        if year % 4 == 0 & element == 2:
-            result = 29
-        return result
-
-    def report_to_excel(self, report):
+    def report_to_excel(self, df):
         # Reports/<FORMAT>/<ORG>.<YEAR>.<?MONTH?>.report.xlsx
-        xls_header = '{} Record of Food {} Activities ({}) - {}'.format(datetime.now().year, self.stage, self.STAGE_TITLE[self.stage], self.MONTH_NAME)
+
+        # for n, df in enumerate(dfs):
+            # df.to_excel(writer, self.COLLECTION_CATEGORIES_TABS[n])
 
         name = ".".join([self.ngo, str(self.YEAR_NUM), str(self.MONTH_NUM), self.stage])
+        sheet_name = self.COLLECTION_CATEGORIES_TABS[0]
+        
         dest_xlsx = self.REPORT_FOLDER + ".".join([name, 'ecf', 'report', 'xlsx'])
+        xls_header = '{} Record of Food {} Activities ({}) - {}'.format(
+            datetime.now().year, self.stage, self.STAGE_TITLE[self.stage], self.MONTH_NAME)
 
+        print('Report generating to: ' + dest_xlsx)
+
+        self.ensure_dest_exists()
+
+        writer = pd.ExcelWriter(dest_xlsx, engine='xlsxwriter')
+        pd.DataFrame(['']).to_excel(writer, sheet_name, startrow=0,
+                        index=False, header=False)
+        df.to_excel(writer, sheet_name, startrow=1, merge_cells=True, )
+        
+        workbook = writer.book
+        worksheet = writer.sheets['food']
+        worksheet.merge_range('A1:G1', xls_header)
+
+        self.set_workbook_format(df, worksheet)
+        self.set_col_widths(workbook, worksheet)
+
+        writer.save()
+        
+        print('Done!')
+
+    def ensure_dest_exists(self):
         if not os.path.exists(self.REPORT_FOLDER):
             os.makedirs(self.REPORT_FOLDER)
 
-        print('Report generating to: ' + dest_xlsx)
-        report.to_excel(dest_xlsx, index_label='label', merge_cells=True, sheet_name=self.STAGE_TITLE[self.stage])
-        print('Done!')
+
+    def write_totals_column(self, df, worksheet):
+
+        format = self.set_workbook_format(workbook)
+        
+        for i, r in get_totals_column(df).iterrows():
+            try:
+                worksheet.merge_range("G{row_start}:G{row_end}".format(**r), r.kg, format)
+            except UserWarning as e:
+                print(e)
+                worksheet.write_number("G{row_start}".format(**r), r.kg, format)
+
+
+    def get_totals_column(self, df):
+        offset = 2
+        totals = dfs.groupby(level='datetime').sum()
+        rowspan = dfs.ix[:,-1:].groupby(level='datetime').count()
+        totals['span'] = rowspan
+        totals['row_end'] = (totals['span'].cumsum() + offset).astype('int')
+        # totals['row_end'] = totals['row_end'] - range(1,len(totals)+1)
+        totals['row_start'] = (totals['row_end'].shift().fillna(offset).astype('int') + 1).astype('int')
+        return totals
+
+
+    def set_workbook_format(self, workbook):
+        format = workbook.add_format()
+        format.set_align('center')
+        format.set_align('bottom')
+        return format
+
+
+    def set_col_widths(self, workbook, worksheet):
+        col_widths = [15,12,45,70,12,5,10]
+
+        format = workbook.add_format()
+        format.set_align('center')
+        format.set_align('vcenter')
+        format.set_font('Courier New')
+
+        for col, width in enumerate(col_widths):
+            worksheet.set_column(col, col, width, cell_format=format) 
+
+
 
 if __name__ == '__main__':
     opts = {
@@ -419,4 +355,7 @@ if __name__ == '__main__':
         'ONLY_STAGES' : ['collection']
     }
     report = ECFReport(**opts)
-    report.generate_all_reports()
+    # report.generate_all_reports()
+
+    programmes = [u'ECF Van 01', u'ECF Van 03', u'ECF Van 02']
+    report.generate_single_report('FoodLink', 'collection', programmes);
