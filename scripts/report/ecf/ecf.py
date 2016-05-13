@@ -43,12 +43,7 @@ class ECFReport(object):
         self.ROOT_FOLDER = 'data/Canonical/'
         self.REPORT_FOLDER = 'data/Report/'
 
-        self.FRESH_FOOD_CATEGORIES = ["Vegetable", "Leafy Veg", "Ground Veg", 
-                                 "Soy Products", "Fruit", "Bread", "Meat",
-                                 "Seafood", "Cooked Food", "Fresh Other"]
-        self.PACKAGED_FOOD_CATEGORIES = ["Staple", "Frozen", "Condiments", 
-                                    "Drinks", "Milk Powder", "Packaged Other"]
-
+        
         self.COLLECTION_CATEGORIES_TABS = ['Cooked & Fruit','Food Products']
         self.COLLECTION_CATEGORIES = ['Cooked Food','Food Product']
 
@@ -84,7 +79,7 @@ class ECFReport(object):
         self.ONLY_STAGES = []
 
         self.SKIP_PROGRAMMES = [u'General',u'Amenities']
-        self.ONLY_PROGRAMMES = ['ECF Van 01','ECF Van 02','ECF Van 03']
+        self.ONLY_PROGRAMMES = ['ECF Van 01','ECF Van 02','ECF Van 03','General']
 
         # Override the defaults
         if kwargs is not None:
@@ -95,10 +90,9 @@ class ECFReport(object):
         self.stage = ''
         self.programmes = []
     
+        print('GENERATING REPORT FOR PERIOD\n ', self.YEAR_NUM, '-', self.MONTH_NUM)
 
     def generate_all_reports(self, year=datetime.now().year, iteration=1):
-
-        print('GENERATING REPORT FOR PERIOD\n ', self.YEAR_NUM, '-', self.MONTH_NUM)
 
         print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
         
@@ -166,16 +160,20 @@ class ECFReport(object):
 
         if stage == 'collection':
             df_map['donors'] = self.map_donors_to_dataframe(fns)
-            df_map[stage] = self.melt_df(df_map[self.stage])
-            df_merge = df_map[stage].merge(df_map['donors'],how='left',left_on=['donor','programme'],right_on=['id','programme'])
-
-            print(stage)
             
-            cols = ['datetime','programme','name_en','location','category','kg']
+            df_map[stage] = self.melt_df(df_map[self.stage])
+
+            df_merge = df_map[stage].merge(df_map['donors'],how='left',
+                left_on=['donor','programme'],right_on=['id','programme'])
+
+            cols = ['datetime','programme','name_en','location','variable','value']
             df = df_merge[cols]
             df.columns = ['datetime','programme','donor','address','category','kg']
+            
+            df.datetime = df.datetime.dt.strftime('%d-%b-%y')
+
             df = df.sort_values(by=self.SORT_KEY)
-            df.set_index(self.SORT_KEY, inplace=True)
+            df = df.set_index(self.SORT_KEY)
         
             self.report_to_excel(df)
 
@@ -250,7 +248,8 @@ class ECFReport(object):
         df.drop('organisation_id', axis=1, inplace=True)
         df.datetime = pd.to_datetime(df.datetime)
         df.sort_values(by=['datetime', 'programme', 'donor'], inplace=True)
-        df.set_index('datetime').truncate(before=period, after=period).reset_index()
+        # TODO FIX THE TRUNCATE
+        df.set_index('datetime').truncate(before=period, after=period)
         df.fillna(0, inplace=True)
         return df
 
@@ -259,14 +258,7 @@ class ECFReport(object):
         df = df[cols]
         return df
 
-
-    # Utilities 
-
-    def base_path(self):
-        return self.ROOT_FOLDER + self.ngo + '/'
-
-    def available_csvs(self):
-        return os.listdir(self.base_path())
+    # XLXWRITER
 
     def report_to_excel(self, df):
         # Reports/<FORMAT>/<ORG>.<YEAR>.<?MONTH?>.report.xlsx
@@ -291,26 +283,22 @@ class ECFReport(object):
         df.to_excel(writer, sheet_name, startrow=1, merge_cells=True, )
         
         workbook = writer.book
-        worksheet = writer.sheets['food']
+        worksheet = writer.sheets[sheet_name]
         worksheet.merge_range('A1:G1', xls_header)
 
-        self.set_workbook_format(df, worksheet)
+        self.write_totals_column(df, workbook, worksheet)
         self.set_col_widths(workbook, worksheet)
 
         writer.save()
         
-        print('Done!')
-
-    def ensure_dest_exists(self):
-        if not os.path.exists(self.REPORT_FOLDER):
-            os.makedirs(self.REPORT_FOLDER)
+        print('\n Done!')
 
 
-    def write_totals_column(self, df, worksheet):
+    def write_totals_column(self, df, workbook, worksheet):
 
         format = self.set_workbook_format(workbook)
         
-        for i, r in get_totals_column(df).iterrows():
+        for i, r in self.get_totals_column(df).iterrows():
             try:
                 worksheet.merge_range("G{row_start}:G{row_end}".format(**r), r.kg, format)
             except UserWarning as e:
@@ -320,8 +308,8 @@ class ECFReport(object):
 
     def get_totals_column(self, df):
         offset = 2
-        totals = dfs.groupby(level='datetime').sum()
-        rowspan = dfs.ix[:,-1:].groupby(level='datetime').count()
+        totals = df.groupby(level='datetime').sum()
+        rowspan = df.ix[:,-1:].groupby(level='datetime').count()
         totals['span'] = rowspan
         totals['row_end'] = (totals['span'].cumsum() + offset).astype('int')
         # totals['row_end'] = totals['row_end'] - range(1,len(totals)+1)
@@ -347,15 +335,36 @@ class ECFReport(object):
         for col, width in enumerate(col_widths):
             worksheet.set_column(col, col, width, cell_format=format) 
 
+    # Utilities 
+
+    def base_path(self):
+        return self.ROOT_FOLDER + self.ngo + '/'
+
+    def available_csvs(self):
+        return os.listdir(self.base_path())
+
+    def melt_df(self, df):
+        rest_cols = [col for col in list(df.columns.values) if col not in self.MELT_INDEX]
+
+        df = pd.melt(df, id_vars=self.MELT_INDEX, value_vars=rest_cols)
+        df = df[df.value != 0]
+        df = df[df['value'].notnull()]
+
+        return df
+
+    def ensure_dest_exists(self):
+        if not os.path.exists(self.REPORT_FOLDER):
+            os.makedirs(self.REPORT_FOLDER)
+
 
 
 if __name__ == '__main__':
     opts = {
         "ONLY_NGO" : ['FoodLink'],
-        'ONLY_STAGES' : ['collection']
+        'ONLY_STAGES' : ['collection','distribution']
     }
     report = ECFReport(**opts)
-    # report.generate_all_reports()
+    report.generate_all_reports()
 
-    programmes = [u'ECF Van 01', u'ECF Van 03', u'ECF Van 02']
-    report.generate_single_report('FoodLink', 'collection', programmes);
+    # programmes = [u'ECF Van 01', u'ECF Van 03', u'ECF Van 02']
+    # report.generate_single_report('FoodLink', 'collection', programmes);

@@ -135,39 +135,13 @@ class GoogleSourceSheet(Spreadsheet):
         self.unit = None
         self.quantity = None
         self.unit_weight = None
-        
-        if(stage == "Collection"):
-            self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
-        elif(stage == "Distribution"):
-            #self.std_cols = ['datetime', 'Beneficiary_id', 'Distribution_Count', 'Distribution_Amount']
-            self.std_cols = ['datetime', 'Beneficiary_id', 'Distribution_Count']
-        elif(stage == "Processing"):
-            self.std_cols = ['datetime', 'na_1', 'na_2', 'compost', 'disposal', 'storage']
-        else:
-            raise NotImplementedError
-
-        self.df = pd.DataFrame(columns=self.std_cols)
+        self.std_cols = []
 
         self.parse_meta_sheet()
+        self.set_std_cols()
         self.set_schema()
+        self.set_df()
 
-    def parse_cover_sheet(self):
-        if self.stage in ['Collection', 'Distribution', 'Processing']:
-            ws = self.get_worksheet(0)
-            values = ws.get_all_values()
-            cover = pd.DataFrame(values)
-            cover.columns = cover.iloc[0]
-            cover = cover.ix[1:]
-            return cover
-
-    def collect_week_sheets(self):
-        return [ws for ws in self.worksheets() if _is_week_number(ws.title)]
-
-    def weekday_to_date(self, monday_date_as_str , week_day):
-        monday_date = datetime.datetime.strptime(monday_date_as_str, '%Y-%m-%d')
-        days_offset = self.weekdays.index(week_day)
-        record_date = monday_date + datetime.timedelta(days=days_offset)
-        return record_date
 
     def parse_meta_sheet(self):
         ws = self.worksheet('meta')
@@ -189,12 +163,31 @@ class GoogleSourceSheet(Spreadsheet):
                 print('PARSING CODE : ECF')
                 self.other_header_cols = self.english_other_header_cols
                 self.other_value_cols = self.english_other_value_cols
-
+        
         # Programme Settings 
         # TODO ECF also has PRogrammes in other stages.
 
-        if self.stage == 'Collection':
+        if self.stage in ['Collection','Distribution']:
             self.programme = metadata['programme']
+   
+
+    def set_std_cols(self):
+        if(self.stage == "Collection"):
+            self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
+        elif(self.stage == "Distribution"):
+            if(self.parsing_code == 'ecf'):
+                self.std_cols = ['datetime', 'beneficiary_id', 'distribution_id', 'distribution_amount']
+            else:
+                self.std_cols = ['datetime', 'beneficiary_id', 'distribution_amount']
+        elif(self.stage == "Processing"):
+            self.std_cols = ['datetime', 'na_1', 'na_2', 'compost_amount', 'disposal_amount', 'storage_amount']
+        else:
+            raise NotImplementedError
+   
+
+    def set_df(self):
+        self.df = pd.DataFrame(columns=self.std_cols)
+
 
     def set_schema(self):
         ws = self.worksheet('1')
@@ -209,16 +202,27 @@ class GoogleSourceSheet(Spreadsheet):
 
             self.col_headers = col_headers
             self.schema = schema_items
+        
         elif self.stage == 'Distribution':
-            schema_items = self.std_cols
             self.col_headers = self.std_cols
             self.schema = self.std_cols
+        
         elif self.stage == 'Processing':
-            schema_items = self.std_cols
             self.col_headers = self.std_cols
             self.schema = self.std_cols
         else:
             raise NotImplementedError
+
+
+    def parse_cover_sheet(self):
+        if self.stage in ['Collection', 'Distribution', 'Processing']:
+            ws = self.get_worksheet(0)
+            values = ws.get_all_values()
+            cover = pd.DataFrame(values)
+            cover.columns = cover.iloc[0]
+            cover = cover.ix[1:]
+            return cover
+
 
     def parse_collection(self):
 
@@ -278,20 +282,79 @@ class GoogleSourceSheet(Spreadsheet):
                     food_volume = row[self.other_volume][idx]
                     self.df.ix[(self.df.donor == donor) & (self.df.datetime == timestamp), food_type.strip()] = float(food_volume)
 
-    def standard_row(self, donor, timestamp, std_values):
-        return [self.org, self.programme, timestamp, donor] + std_values
+    def parse_processing(self):
+        wss = self.collect_week_sheets()
+        # DEVELOPER
+        for ws in wss:
+            self.parse_processing_weeksheet(ws)
+        return self.df
 
-    def create_translations_keys(self, terms):
-        # TODO Support English Keys
-        self.terms_to_sheet('Translations', terms)
+    def parse_processing_weeksheet(self, ws):
+        header_offset = 2
+        values = ws.get_all_values()
+        collection = pd.DataFrame(values)
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
+        #print(collection.iloc[header_offset:, 0])
 
-    def create_mappings_keys(self, terms):
-        # TODO Support English Keys
-        self.terms_to_sheet('Mappings', terms)
+        if(len(collection.index) > header_offset):
+            timestamps = collection.iloc[header_offset:, 0]
+            raw_df = collection.ix[header_offset:, :].copy()
+            #print(raw_df.columns.values)
+            raw_df.columns = self.schema
+            loc = len(self.df)
 
-    def create_units_keys(self, terms):
-        # TODO Support English Keys
-        self.terms_to_sheet('Units', terms)
+            #print(raw_df)
+            #print(timestamps)
+            #print(collection.iloc[0,1])
+            tempList = []
+            for ridx in timestamps.index.tolist():
+                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                tempList = tempList + [timestamp]
+            raw_df['datetime'] = tempList
+            self.df = self.df.append(raw_df,ignore_index = True)   
+
+
+    def parse_distribution(self):
+        wss = self.collect_week_sheets()
+        # DEVELOPER
+        for ws in wss[13:17]:
+        # for ws in wss:
+            self.parse_dist_weeksheet(ws)
+        return self.df
+
+    def parse_dist_weeksheet(self, ws):
+        header_offset = 2
+        values = ws.get_all_values()
+        collection = pd.DataFrame(values)
+        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
+        # print(collection.iloc[header_offset:, 0])
+
+        if self.parsing_code == 'ecf':
+            if(len(collection.index) > header_offset):
+                timestamps = collection.iloc[header_offset:, 0]
+                raw_df = collection.ix[header_offset:, :].copy()
+                raw_df.columns = self.schema
+                loc = len(self.df)
+                tempList = []
+                for ridx in timestamps.index.tolist():
+                    timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                    tempList = tempList + [timestamp]
+                raw_df['datetime'] = tempList
+                self.df = self.df.append(raw_df,ignore_index = True)  
+
+        else:
+
+            if(len(collection.index) > header_offset):
+                timestamps = collection.iloc[header_offset:, 0]
+                raw_df = collection.ix[header_offset:, :].copy()
+                raw_df.columns = self.schema
+                loc = len(self.df)
+                tempList = []
+                for ridx in timestamps.index.tolist():
+                    timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                    tempList = tempList + [timestamp]
+                raw_df['datetime'] = tempList
+                self.df = self.df.append(raw_df,ignore_index = True)    
 
     def terms_to_sheet(self, sheet_name, terms):
         ssx = self.client.open("{} - {}".format(self.client._ss_prefix, sheet_name))
@@ -335,69 +398,34 @@ class GoogleSourceSheet(Spreadsheet):
             ws = ssx.get_worksheet(0)
 
             yield ws.get_all_values(), code
+ 
 
+    def collect_week_sheets(self):
+        return [ws for ws in self.worksheets() if _is_week_number(ws.title)]
 
-    def parse_processing(self):
-        wss = self.collect_week_sheets()
-        # DEVELOPER
-        for ws in wss[13:17]:
-        # for ws in wss:
-            self.parse_processing_weeksheet(ws)
-        return self.df
+    def standard_row(self, donor, timestamp, std_values):
+        return [self.org, self.programme, timestamp, donor] + std_values
 
-    def parse_distribution(self):
-        wss = self.collect_week_sheets()
-        # DEVELOPER
-        for ws in wss[13:17]:
-        # for ws in wss:
-            self.parse_dist_weeksheet(ws)
-        return self.df
+    def create_translations_keys(self, terms):
+        # TODO Support English Keys
+        self.terms_to_sheet('Translations', terms)
 
-    def parse_dist_weeksheet(self, ws):
-        header_offset = 2
-        values = ws.get_all_values()
-        collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
-        # print(collection.iloc[header_offset:, 0])
+    def create_mappings_keys(self, terms):
+        # TODO Support English Keys
+        self.terms_to_sheet('Mappings', terms)
 
-        if(len(collection.index) > header_offset):
-            timestamps = collection.iloc[header_offset:, 0]
-            raw_df = collection.ix[header_offset:, :].copy()
-            raw_df.columns = self.schema
-            loc = len(self.df)
-            tempList = []
-            for ridx in timestamps.index.tolist():
-                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                tempList = tempList + [timestamp]
-            raw_df['datetime'] = tempList
-            self.df = self.df.append(raw_df,ignore_index = True)    
-
-    def parse_processing_weeksheet(self, ws):
-        header_offset = 2
-        values = ws.get_all_values()
-        collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
-        #print(collection.iloc[header_offset:, 0])
-
-        if(len(collection.index) > header_offset):
-            timestamps = collection.iloc[header_offset:, 0]
-            raw_df = collection.ix[header_offset:, :].copy()
-            #print(raw_df.columns.values)
-            raw_df.columns = self.schema
-            loc = len(self.df)
-
-            #print(raw_df)
-            #print(timestamps)
-            #print(collection.iloc[0,1])
-            tempList = []
-            for ridx in timestamps.index.tolist():
-                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                tempList = tempList + [timestamp]
-            raw_df['datetime'] = tempList
-            self.df = self.df.append(raw_df,ignore_index = True)    
+    def create_units_keys(self, terms):
+        # TODO Support English Keys
+        self.terms_to_sheet('Units', terms)
 
     def get_data_rows(self, rows):
         return [row for row in rows if any(row)]
+
+    def weekday_to_date(self, monday_date_as_str , week_day):
+        monday_date = datetime.datetime.strptime(monday_date_as_str, '%Y-%m-%d')
+        days_offset = self.weekdays.index(week_day.title())
+        record_date = monday_date + datetime.timedelta(days=days_offset)
+        return record_date
 
 def _is_week_number(title):
     if not title.isdigit():

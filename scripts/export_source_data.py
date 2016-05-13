@@ -19,8 +19,8 @@ SKIP_NGO = ['NLPRA']
 ONLY_NGO = ['FoodLink']
 # SKIP_STAGES = ['collection']
 SKIP_STAGES = []
-# ONLY_STAGES = ['collection', 'distribution', 'processing']
-ONLY_STAGES = ['collection']
+ONLY_STAGES = ['collection', 'distribution', 'processing']
+ONLY_STAGES = ['distribution']
 
 '''
 SAVE PROGRESS 
@@ -62,7 +62,40 @@ def check_or_set(base, key, status=None):
 /SAVE PROGRESS
 '''
 
-def export_source_sheets(iteration=1, skip_progress_check=False):
+def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check):
+    
+    if not skip_progress_check and progress_check(stage, ngo, programme):
+        print(skip_progress_check)
+        if progress[stage][ngo][programme]:
+            print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+        else:
+            print('\n>>> MUCH FAIL >>> ', ngos, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+        return 
+
+    print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+    
+    if not sheets:
+        return
+
+    for sheet in sheets:
+        ss = SheetToCanonical(**sheet)
+        
+        if stage == 'collection':
+            ss.collection_sheets_to_csv()
+            ss.donors_sheets_to_csv()
+        
+        elif stage == 'processing':
+            ss.finance_sheets_to_csv()
+            ss.processing_sheets_to_csv()
+        
+        elif stage == 'distribution':
+            ss.distribution_sheets_to_csv()
+            ss.beneficiary_sheets_to_csv()
+
+    if not skip_progress_check:
+        check_or_set(progress[stage][ngo], programme, True)
+
+def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=False):
 
     print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
     
@@ -96,50 +129,28 @@ def export_source_sheets(iteration=1, skip_progress_check=False):
         
             for programme, sheets in programmes.iteritems():
 
-                # try:
+                if developer_mode:
+                    iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check)
 
-                if not skip_progress_check and progress_check(stage, ngo, programme):
-                    print(skip_progress_check)
-                    if progress[stage][ngo][programme]:
-                        print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                    else:
-                        print('\n>>> MUCH FAIL >>> ', ngos, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                    continue
+                else:
+                    retry_export_on_failed_attempt(iterate_over_sheets, stage, ngo, programme, sheets, iteration, skip_progress_check)
 
-                print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-                
-                if not sheets:
-                    continue
-        
-                for sheet in sheets:
-                    ss = SheetToCanonical(**sheet)
-                    
-                    if stage == 'collection':
-                        ss.collection_sheets_to_csv()
-                        ss.donors_sheets_to_csv()
-                    
-                    elif stage == 'processing':
-                        ss.finance_sheets_to_csv()
-                        ss.processing_sheets_to_csv()
-                    
-                    elif stage == 'distribution':
-                        ss.distribution_sheets_to_csv()
-                        ss.beneficiary_sheets_to_csv()
 
-                if not skip_progress_check:
-                    check_or_set(progress[stage][ngo], programme, True)
-    
-                # except HTTPError as e:
-                #     print(e)
-                #     export_source_sheets(iteration+1, skip_progress_check)
+def retry_export_on_failed_attempt(fn, stage, ngo, programme, sheets, iteration, skip_progress_check):
+    try:
+        fn(stage, ngo, programme, sheets, iteration, skip_progress_check)
+    except HTTPError as e:
+        print(e)
+        export_source_sheets(iteration+1, skip_progress_check)
 
-                # except Exception as e:
-                #     print(e)
-                #     if not skip_progress_check:
-                #         check_or_set(progress[stage][ngo], programme, False)
-                #         export_source_sheets(iteration+1, skip_progress_check)
-                #     else:
-                #         import pdb; pdb.set_trace()
+    except Exception as e:
+        print(e)
+        if not skip_progress_check:
+            check_or_set(progress[stage][ngo], programme, False)
+            export_source_sheets(iteration+1, skip_progress_check)
+        else:
+            import pdb; pdb.set_trace()
+
 
     # Refector the Terms
     # ss.terms_sheets_to_csv()
