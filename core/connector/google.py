@@ -176,7 +176,8 @@ class GoogleSourceSheet(Spreadsheet):
             self.std_cols = ['organisation_id', 'programme', 'datetime', 'donor']
         elif(self.stage == "Distribution"):
             if(self.parsing_code == 'ecf'):
-                self.std_cols = ['datetime', 'beneficiary_id', 'distribution_id', 'distribution_amount']
+                self.std_cols = ['organisation_id','programme','datetime', 'beneficiary']
+                self.export_cols = ['organisation_id','programme','datetime', 'beneficiary','category', 'kg']
             else:
                 self.std_cols = ['datetime', 'beneficiary_id', 'distribution_amount']
         elif(self.stage == "Processing"):
@@ -197,19 +198,21 @@ class GoogleSourceSheet(Spreadsheet):
             schema_items = col_headers[:idx]
 
             offset = self.other_header_cols
-            idx = col_headers.index(self.other_volume) +1
+            idx = col_headers.index(self.other_volume) + 1
             schema_items += col_headers[idx:-offset]
 
             self.col_headers = col_headers
             self.schema = schema_items
         
         elif self.stage == 'Distribution':
-            self.col_headers = self.std_cols
-            self.schema = self.std_cols
+            self.index_cols = ['weekday','beneficiary']
+            self.col_headers = ['category', 'distribution_amount']
+            self.schema = ['category', 'Volume (KG)']
         
         elif self.stage == 'Processing':
             self.col_headers = self.std_cols
             self.schema = self.std_cols
+
         else:
             raise NotImplementedError
 
@@ -240,6 +243,8 @@ class GoogleSourceSheet(Spreadsheet):
 
         self.create_translations_keys(terms)
         self.create_mappings_keys(terms)
+
+
         # Nobody is using units 
         # self.create_units_keys(terms)
 
@@ -258,7 +263,7 @@ class GoogleSourceSheet(Spreadsheet):
         collection.columns = collection.iloc[1].tolist()
         donors = collection.iloc[header_offset:, 1]
         timestamps = collection.iloc[header_offset:, 0]
-        col_categories = collection.iloc[0, 2:]
+        
         raw_df = collection.ix[header_offset:, self.schema]
         raw_df.columns = self.schema
         loc = len(self.df)
@@ -277,7 +282,6 @@ class GoogleSourceSheet(Spreadsheet):
             timestamp = self.weekday_to_date(collection.iloc[0,1], row[0])
             donor = row[1]
             for idx, food_type in enumerate(row[self.other_type]):
-                print(idx, food_type)
                 if food_type is not np.nan:
                     food_volume = row[self.other_volume][idx]
                     self.df.ix[(self.df.donor == donor) & (self.df.datetime == timestamp), food_type.strip()] = float(food_volume)
@@ -316,31 +320,44 @@ class GoogleSourceSheet(Spreadsheet):
 
     def parse_distribution(self):
         wss = self.collect_week_sheets()
+        
+        self.df = self.df.join(pd.DataFrame(columns=self.schema))
+
         # DEVELOPER
         for ws in wss[13:17]:
         # for ws in wss:
             self.parse_dist_weeksheet(ws)
+
+        self.df.datetime = pd.to_datetime(self.df.datetime)
+
+        self.df.columns = self.export_cols
+
         return self.df
 
     def parse_dist_weeksheet(self, ws):
+        
         header_offset = 2
         values = ws.get_all_values()
-        collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
-        # print(collection.iloc[header_offset:, 0])
-
+        if not any(values[2]):
+            return
+      
         if self.parsing_code == 'ecf':
-            if(len(collection.index) > header_offset):
-                timestamps = collection.iloc[header_offset:, 0]
-                raw_df = collection.ix[header_offset:, :].copy()
-                raw_df.columns = self.schema
-                loc = len(self.df)
-                tempList = []
-                for ridx in timestamps.index.tolist():
-                    timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                    tempList = tempList + [timestamp]
-                raw_df['datetime'] = tempList
-                self.df = self.df.append(raw_df,ignore_index = True)  
+            collection = pd.DataFrame(self.get_data_rows(values))
+            print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
+            collection.columns = collection.iloc[1].tolist()
+            
+            beneficiaries = collection.iloc[header_offset:, 1]
+            timestamps = collection.iloc[header_offset:, 0]
+
+            raw_df = collection.ix[header_offset:, self.schema]
+            raw_df.columns = self.schema
+            loc = len(self.df)
+
+            for ridx, row in raw_df.iterrows():
+                beneficiary = beneficiaries[ridx]
+                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(beneficiary, timestamp, row.tolist())
+                loc += 1
 
         else:
 

@@ -69,7 +69,7 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_
         if progress[stage][ngo][programme]:
             print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
         else:
-            print('\n>>> MUCH FAIL >>> ', ngos, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+            print('\n>>> MUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
         return 
 
     print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
