@@ -19,7 +19,7 @@ class FoodLinkDonorReport(object):
     
     Currently only supports FoodLink Donors.
 
-    Requires self.REPORT_FOLDER to be symlinked to FOODWORKS/ 
+    Requires self.REPORT_FOLDER/{ngo} to be symlinked to FOODWORKS/Reports/{ngo}
 
     Requires wkhtmltopdf to be installed and available on path.
     
@@ -41,27 +41,89 @@ class FoodLinkDonorReport(object):
         self.MONTH_NAME = self.PERIOD.strftime('%B')
         self.YEAR_NUM = self.PERIOD.year
 
-        self.fn_html = 'temp.html'
-        self.fn_pdf  = 'test.pdf'
+        self.fn = ''
+        self.fn_html = self.fn + '.html'
+        self.fn_pdf  = self.fn + '.pdf'
         self.path_pdf = self.REPORT_FOLDER + ngo + '/' + str(self.YEAR_NUM) + '/' + \
             str(self.MONTH_NUM) + '/'
 
         self.html_to_pdf_process = [
             "wkhtmltopdf", "--debug-javascript", "--orientation", "Landscape",
             "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
-            self.path_pdf + self.fn_pdf ]        
+            self.path_pdf + self.fn_pdf ] 
+
+        # Dates
+
+        self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        self.month_styles = ['rgba(204,204,204,1)'] * 12 
+        self.weekly_style = 'rgba(222,45,38,0.8)'
+
 
     # PUBLIC
 
     def data_to_pdf(self):
-        data, x, y = self.compose_data([289,234,223,1232],[3290,4279,2167])
-        layout = self.compose_layout(x,y)
-        fig = go.Figure(data=data, layout=layout)
-        html = self.new_iplot(fig)
-        self.ensure_dest_exists()
-        self.html_to_pdf(html)
+        df = self.prepare_data()
+        for donor in df.index.unique():
+            name = df.ix[donor,'name'][0]
+            self.set_fns(donor)
+            print(donor)
+            weekly_totals = df.ix[donor,:].value.tolist()
+            print(weekly_totals)
+            try:
+                monthly_totals = sum(weekly_totals)
+            except TypeError:
+                monthly_totals = weekly_totals
+                weekly_totals = [weekly_totals]
+            print(monthly_totals)
+            data, x, y = self.compose_data(weekly_totals,[0,0,0,monthly_totals])
+            layout = self.compose_layout(x,y,len(weekly_totals),name)
+            fig = go.Figure(data=data, layout=layout)
+            html = self.new_iplot(fig)
+            self.ensure_dest_exists()
+            self.html_to_pdf(html)
+
+        self.clean_temp_files()
+
+    def set_fns(self,donor):
+        self.fn = "{}.{}.{}.{}.report".format(self.ngo, donor, self.YEAR_NUM, self.MONTH_NUM)
+        self.fn_html = self.fn + '.html'
+        self.fn_pdf = self.fn + '.pdf'
+        self.html_to_pdf_process = [
+            "wkhtmltopdf", "--debug-javascript", "--orientation", "Landscape",
+            "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
+            self.path_pdf + self.fn_pdf ] 
 
     # PRIVATE
+
+    # Data Wrangling
+
+    def prepare_data(self):
+        df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
+            fx in self.relevant_csvs()]).fillna(0)
+        df = self.merge_donors(df)
+        efficiency = self.split_off_agg_column(df,'donor','efficiency')
+        names = self.split_off_agg_column(df,'donor','name')
+
+        df.datetime = pd.to_datetime(df.datetime)
+        df.set_index('datetime', inplace=True)
+        df = df.groupby('donor').resample('W-MON', label='left').sum().sum(axis=1).reset_index()
+        df = df.set_index('donor').join(efficiency).join(names)
+        df['value'] =  df[0] * df['efficiency'] / 100
+        return df[['datetime','name','value']]
+
+    def merge_donors(self, df):
+        donors = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
+            fx in self.donor_csvs()])
+        cols = ['id','efficiency', 'name_en']
+        donors = donors[cols]
+        donors.columns = ['donor','efficiency', 'name']
+        
+        return df.merge(donors, on='donor')
+
+    def split_off_agg_column(self,df,agg,col):
+        split_col = df.groupby(agg).min()[col]
+        df.drop(col, axis=1, inplace=True)
+        return split_col
 
     # Plotting
 
@@ -111,7 +173,7 @@ class FoodLinkDonorReport(object):
              .logo {{
                 position: absolute;
                 top:0;
-                right:0;
+                left:0;
                 z-index:100;
                 width:20%;
              }}
@@ -162,16 +224,16 @@ class FoodLinkDonorReport(object):
     # Data
 
     def compose_data(self, weekly_totals, monthly_totals):
-        month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-        month_styles = ['rgba(204,204,204,1)'] * 12 
         cut = max(len(monthly_totals) - 1, 0)
-        base_year = datetime.now().year
-        base_week = datetime(base_year, len(monthly_totals), 1).isocalendar()[1]
+        base_week = datetime(self.YEAR_NUM, len(monthly_totals), 1).isocalendar()[1]
+        month_names = list(self.month_names[:len(monthly_totals)])
+        month_styles = list(self.month_styles[:len(monthly_totals)])
 
         for offset, weekly_total in enumerate(weekly_totals):
-            monthly_totals.insert(cut+offset, weekly_total)
+            monthly_totals.insert(cut + offset, weekly_total)
             month_names.insert(cut + offset, 'WK' + str(base_week + offset))
-            month_styles.insert(cut + offset, 'rgba(222,45,38,0.8)')
+            month_styles.insert(cut + offset, self.weekly_style)
+        
         trace0 = go.Bar(
             x=month_names,
             y=monthly_totals,
@@ -184,9 +246,9 @@ class FoodLinkDonorReport(object):
 
     # Layout
 
-    def compose_layout(self, x, y):
+    def compose_layout(self, x, y, weeks, name):
         layout = go.Layout(
-            title='<b>3/3rds, Central</b><br>2016 Weekly Food Donation in KG ',
+            title='<b>{}</b><br>{} Weekly Food Donation in KG '.format(name, self.YEAR_NUM),
             titlefont = dict(
                 size=22
                 ),
@@ -235,6 +297,13 @@ class FoodLinkDonorReport(object):
 
     def available_csvs(self):
         return os.listdir(self.base_path())
+
+    def relevant_csvs(self):
+        return [fn for fn in self.available_csvs() if
+            ".".join([str(self.YEAR_NUM), 'collection']) in fn]
+
+    def donor_csvs(self):            
+        return [fn for fn in self.available_csvs() if 'donor' in fn]
     
     def base_path(self):
         return self.ROOT_FOLDER + self.ngo + '/'
@@ -242,6 +311,9 @@ class FoodLinkDonorReport(object):
     def ensure_dest_exists(self):
         if not os.path.exists( self.path_pdf):
             os.makedirs( self.path_pdf)
+
+    def clean_temp_files(self):
+        raise NotImplementedError
 
     def week_of_month(self, dt):
         """ Returns the week of the month for the specified date.
