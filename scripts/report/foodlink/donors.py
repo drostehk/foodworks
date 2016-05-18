@@ -14,6 +14,12 @@ from math import ceil
 from plotly import session, tools, utils
 from subprocess import call
 
+# TODO : Adding in previous month's data
+# TODO : Handle if there's isn't a pickup every week of the month
+# TODO : Add Week-Range in the Subtitle
+# TODO : Clear Temp Files
+# TODO : Split off HTML Template
+
 class FoodLinkDonorReport(object):
     """FoodLinkDonorReport
     
@@ -36,11 +42,19 @@ class FoodLinkDonorReport(object):
         self.REPORT_FOLDER = 'data/Report/' 
         self.ngo = ngo
 
+        # Dates
+
         self.PERIOD = (datetime.now() - timedelta(days=28))
         self.MONTH_NUM = self.PERIOD.month
         self.MONTH_NAME = self.PERIOD.strftime('%B')
         self.YEAR_NUM = self.PERIOD.year
 
+        self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+        self.month_styles = ['rgba(204,204,204,1)'] * 12 
+        self.weekly_style = 'rgba(222,45,38,0.8)'
+
+        # Filenames
+        
         self.fn = ''
         self.fn_html = self.fn + '.html'
         self.fn_pdf  = self.fn + '.pdf'
@@ -52,11 +66,6 @@ class FoodLinkDonorReport(object):
             "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
             self.path_pdf + self.fn_pdf ] 
 
-        # Dates
-
-        self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-        self.month_styles = ['rgba(204,204,204,1)'] * 12 
-        self.weekly_style = 'rgba(222,45,38,0.8)'
 
 
     # PUBLIC
@@ -64,7 +73,6 @@ class FoodLinkDonorReport(object):
     def data_to_pdf(self):
         df = self.prepare_data()
         for donor in df.index.unique():
-            name = df.ix[donor,'name'][0]
             self.set_fns(donor)
             print(donor)
             weekly_totals = df.ix[donor,:].value.tolist()
@@ -76,13 +84,23 @@ class FoodLinkDonorReport(object):
                 weekly_totals = [weekly_totals]
             print(monthly_totals)
             data, x, y = self.compose_data(weekly_totals,[0,0,0,monthly_totals])
-            layout = self.compose_layout(x,y,len(weekly_totals),name)
+            layout = self.compose_layout(x,y,len(weekly_totals),self.opts(df,donor))
             fig = go.Figure(data=data, layout=layout)
             html = self.new_iplot(fig)
             self.ensure_dest_exists()
             self.html_to_pdf(html)
 
         self.clean_temp_files()
+
+    def opts(self, df, donor):
+        return dict(
+            name = df.ix[donor,'name'][0]
+            month = 'APR',
+            week_s = 14,
+            week_e = 17,
+            year = self.YEAR_NUM,
+            meals = 96
+        )
 
     def set_fns(self,donor):
         self.fn = "{}.{}.{}.{}.report".format(self.ngo, donor, self.YEAR_NUM, self.MONTH_NUM)
@@ -246,16 +264,18 @@ class FoodLinkDonorReport(object):
 
     # Layout
 
-    def compose_layout(self, x, y, weeks, name):
+    def compose_layout(self, x, y, weeks, opts):
+        title = """Number of Meals Provided in {month}
+            (Week {week_s} - Week {week_e}) {year} : {meals}""".format(**opts)
         layout = go.Layout(
-            title='<b>{}</b><br>{} Weekly Food Donation in KG '.format(name, self.YEAR_NUM),
+            title='<b>{name}</b><br>{year} Weekly Food Donation in KG '.format(**opts),
             titlefont = dict(
                 size=22
                 ),
             xaxis=dict(
                 # set x-axis' labels direction at 45 degree angle
                 tickangle=-45,
-                title="Number of Meals Provided in APR (Week 14 - Week 17) 2016 : 91",
+                title=title,
                 titlefont = dict(
                     size=20
                 ),
