@@ -1,24 +1,23 @@
-# Learn about API authentication here: https://plot.ly/pandas/getting-started
-# Find your api_key here: https://plot.ly/settings/api
-# Cufflinks binds plotly to pandas dataframes in IPython notebook. Read more
+#!/usr/bin/python
+# -*- coding: UTF-8-*-
+from __future__ import (absolute_import, division, print_function)
 
+import calendar
 import json
 import os
 import numpy as np
 import pandas as pd
+import pdb
 import plotly.graph_objs as go
 import plotly.plotly as py
+import shutil
 
 from datetime import datetime, timedelta
 from math import ceil
 from plotly import session, tools, utils
 from subprocess import call
+from itertools import repeat
 
-# TODO : Adding in previous month's data
-# TODO : Handle if there's isn't a pickup every week of the month
-# TODO : Add Week-Range in the Subtitle
-# TODO : Clear Temp Files
-# TODO : Split off HTML Template
 
 class FoodLinkDonorReport(object):
     """FoodLinkDonorReport
@@ -38,9 +37,8 @@ class FoodLinkDonorReport(object):
     def __init__(self, ngo='FoodLink'):
         super(FoodLinkDonorReport, self).__init__()
         
-        self.ROOT_FOLDER = 'data/Canonical/'
-        self.REPORT_FOLDER = 'data/Report/' 
         self.ngo = ngo
+        self.meal_weight = 0.585
 
         # Dates
 
@@ -50,10 +48,17 @@ class FoodLinkDonorReport(object):
         self.YEAR_NUM = self.PERIOD.year
 
         self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-        self.month_styles = ['rgba(204,204,204,1)'] * 12 
-        self.weekly_style = 'rgba(222,45,38,0.8)'
+        self.month_styles = ['rgba(204,204,204,1)']
+        self.weekly_style = ['rgba(222,45,38,0.8)']
+
+        self.start_date = datetime(self.YEAR_NUM, self.MONTH_NUM, 1)
+        self.end_date = datetime(self.YEAR_NUM, self.MONTH_NUM, calendar.monthrange(
+            self.YEAR_NUM, self.MONTH_NUM)[1])
 
         # Filenames
+        
+        self.ROOT_FOLDER = 'data/Canonical/'
+        self.REPORT_FOLDER = 'data/Report/' 
         
         self.fn = ''
         self.fn_html = self.fn + '.html'
@@ -61,45 +66,75 @@ class FoodLinkDonorReport(object):
         self.path_pdf = self.REPORT_FOLDER + ngo + '/' + str(self.YEAR_NUM) + '/' + \
             str(self.MONTH_NUM) + '/'
 
+        # System Calls
+
         self.html_to_pdf_process = [
             "wkhtmltopdf", "--debug-javascript", "--orientation", "Landscape",
             "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
             self.path_pdf + self.fn_pdf ] 
 
 
-
     # PUBLIC
 
     def data_to_pdf(self):
-        df = self.prepare_data()
-        for donor in df.index.unique():
+        print('********** START *************')
+        df_w, df_m = self.prepare_data()
+        for donor in df_w.index.unique():
             self.set_fns(donor)
-            print(donor)
-            weekly_totals = df.ix[donor,:].value.tolist()
-            print(weekly_totals)
+            print("\n>>>> {}".format(donor.upper()))
+
+            w_totals = df_w.loc[donor,'value'].astype(int).tolist()
             try:
-                monthly_totals = sum(weekly_totals)
-            except TypeError:
-                monthly_totals = weekly_totals
-                weekly_totals = [weekly_totals]
-            print(monthly_totals)
-            data, x, y = self.compose_data(weekly_totals,[0,0,0,monthly_totals])
-            layout = self.compose_layout(x,y,len(weekly_totals),self.opts(df,donor))
+                w_labels = ['WK'+str(wk) for wk in df_w.loc[donor,'datetime'].dt.week.tolist()]
+            except AttributeError:
+                w_totals = df_w.loc[donor,['value']].astype(int).values.tolist()
+                w_labels = ['WK'+str(wk) for wk in df_w.loc[donor,['datetime']].dt.week.tolist()]
+            
+            # print(w_totals)
+            # print(w_labels)
+
+            m_totals = df_m.loc[donor,'value'].astype(int).tolist()
+            try:
+                m_labels = df_m.loc[donor,'datetime'].dt.strftime('%b').str.upper().tolist()
+            except AttributeError:
+                m_totals = df_m.loc[donor,['value']].astype(int).values.tolist()
+                m_labels = df_m.loc[donor,['datetime']].dt.strftime('%b').str.upper().tolist()
+
+            # print(m_totals)
+            # print(m_labels)
+
+            data, x, y = self.compose_data(w_totals, w_labels ,m_totals, m_labels)
+            # print(data)
+            print("{}{}".format('LABELS:', x))
+            print("{}{}\n".format('VALUES:', y))
+
+            m_total = sum(w_totals)
+            w_count = len(w_totals)
+            opts = self.opts(df_w, donor, m_total)
+            
+            layout = self.compose_layout(x, y, w_count, opts)
+            
             fig = go.Figure(data=data, layout=layout)
             html = self.new_iplot(fig)
+            
             self.ensure_dest_exists()
             self.html_to_pdf(html)
 
         self.clean_temp_files()
+        print('********** DONE *************')
 
-    def opts(self, df, donor):
+    def opts(self, df, donor, monthly_total):
+        try:
+            name = df.loc[donor,'name'].values[0]
+        except AttributeError:
+            name = df.loc[donor,'name']
         return dict(
-            name = df.ix[donor,'name'][0]
-            month = 'APR',
-            week_s = 14,
-            week_e = 17,
+            name = name,
+            month = self.start_date.strftime('%b'),
+            week_s = self.start_date.isocalendar()[1],
+            week_e = self.end_date.isocalendar()[1],
             year = self.YEAR_NUM,
-            meals = 96
+            meals = int(monthly_total / self.meal_weight)
         )
 
     def set_fns(self,donor):
@@ -108,7 +143,7 @@ class FoodLinkDonorReport(object):
         self.fn_pdf = self.fn + '.pdf'
         self.html_to_pdf_process = [
             "wkhtmltopdf", "--debug-javascript", "--orientation", "Landscape",
-            "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
+            "-T", "5", "-B", "5", "-L", "5", "-R", "5", 'temp/' + self.fn_html,
             self.path_pdf + self.fn_pdf ] 
 
     # PRIVATE
@@ -119,15 +154,24 @@ class FoodLinkDonorReport(object):
         df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
             fx in self.relevant_csvs()]).fillna(0)
         df = self.merge_donors(df)
+        
+        df.datetime = pd.to_datetime(df.datetime)
+        
         efficiency = self.split_off_agg_column(df,'donor','efficiency')
         names = self.split_off_agg_column(df,'donor','name')
+        
+        df = df.set_index('datetime')
 
-        df.datetime = pd.to_datetime(df.datetime)
-        df.set_index('datetime', inplace=True)
-        df = df.groupby('donor').resample('W-MON', label='left').sum().sum(axis=1).reset_index()
-        df = df.set_index('donor').join(efficiency).join(names)
-        df['value'] =  df[0] * df['efficiency'] / 100
-        return df[['datetime','name','value']]
+        df_m = df.groupby('donor').resample('M', label='right').sum().sum(axis=1).reset_index()
+        df_m = df_m.set_index('donor').join(efficiency).join(names)
+        df_m['value'] =  df_m[0] * df_m['efficiency'] / 100
+
+        df_w = df.groupby('donor').resample('W-MON', label='left').sum().sum(axis=1).reset_index()
+        df_w = df_w.set_index('donor').join(efficiency).join(names)
+        df_w['value'] =  df_w[0] * df_w['efficiency'] / 100
+        df_w = self.slice_reporting_month(df_w)
+        
+        return df_w[['datetime','name','value']], df_m[['datetime','name','value']]
 
     def merge_donors(self, df):
         donors = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
@@ -145,128 +189,56 @@ class FoodLinkDonorReport(object):
 
     # Plotting
 
-    def new_iplot(self, figure_or_data, show_link=False, link_text='Export to plot.ly',
-              validate=True):
+    def new_iplot(self, figure_or_data, validate=True):
 
         figure = tools.return_figure_from_figure_or_data(figure_or_data, validate)
             
-        plotdivid = 'placeholder'
         jdata = json.dumps(figure.get('data', []), cls=utils.PlotlyJSONEncoder)
         jlayout = json.dumps(figure.get('layout', {}), cls=utils.PlotlyJSONEncoder)
 
         config = {}
-        config['showLink'] = show_link
-        config['linkText'] = link_text
+        config['showLink'] = False
+        config['linkText'] = None
+        
         jconfig = json.dumps(config)
 
-        plotly_platform_url = session.get_session_config().get('plotly_domain',
-                                                               'https://plot.ly')
-        if (plotly_platform_url != 'https://plot.ly' and
-                link_text == 'Export to plot.ly'):
-
-            link_domain = plotly_platform_url\
-                .replace('https://', '')\
-                .replace('http://', '')
-            link_text = link_text.replace('plot.ly', link_domain)
-
-
+        html = ''
+        
         script = 'Plotly.plot(gd, {data}, {layout}, {config})'.format(
                 data=jdata,
                 layout=jlayout,
                 config=jconfig)
 
-        html = """
-          <head>
-          <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-beta1/jquery.min.js"></script>
-          <script type="text/javascript">
-        """
+        with open('assets/plotly-latest.min.js') as js:
+            plotly = js.read()
 
-        with open('plotly-latest.min.js') as plotly:
-            html += plotly.read()
-
-        html += """
-                   </script>
-             <title>{id}</title>
-             <style>
-             .logo {{
-                position: absolute;
-                top:0;
-                left:0;
-                z-index:100;
-                width:20%;
-             }}
-
-             g.g-xtitle {{
-                transform: translate(0px, 0px)
-             }}
-             </style>
-        </head>
-        <body>
-            <script type="text/javascript">
-
-            (function() {{
-                var d3 = Plotly.d3;
-
-                var WIDTH_IN_PERCENT_OF_PARENT = 100,
-                    HEIGHT_IN_PERCENT_OF_PARENT = 100;
-
-                var gd3 = d3.select('body')
-                    .append('div')
-                    .style({{
-                        width: WIDTH_IN_PERCENT_OF_PARENT + '%',
-                        'margin-left': (100 - WIDTH_IN_PERCENT_OF_PARENT) / 2 + '%',
-
-                        height: HEIGHT_IN_PERCENT_OF_PARENT + 'vh',
-                        'margin-top': (100 - HEIGHT_IN_PERCENT_OF_PARENT) / 2 + 'vh'
-                    }});
-
-                var gd = gd3.node();
-
-                {script}
-
-                Plotly.Plots.resize(gd);
-
-                window.onresize = function() {{
-                    Plotly.Plots.resize(gd);
-                }};
-
-            }})();
-                   </script>
-                <img class="logo" src="scripts/report/foodlink/logo.jpg">
-
-            </body>
-            """.format(id=plotdivid, script=script)
+        with open('scripts/report/foodlink/report.template.html') as template:
+            html += template.read().format(id='placeholder', script=script, plotly=plotly)
 
         return html
     
     # Data
 
-    def compose_data(self, weekly_totals, monthly_totals):
-        cut = max(len(monthly_totals) - 1, 0)
-        base_week = datetime(self.YEAR_NUM, len(monthly_totals), 1).isocalendar()[1]
-        month_names = list(self.month_names[:len(monthly_totals)])
-        month_styles = list(self.month_styles[:len(monthly_totals)])
-
-        for offset, weekly_total in enumerate(weekly_totals):
-            monthly_totals.insert(cut + offset, weekly_total)
-            month_names.insert(cut + offset, 'WK' + str(base_week + offset))
-            month_styles.insert(cut + offset, self.weekly_style)
+    def compose_data(self, w_totals, w_labels, p_totals, p_labels):
+        p_styles = self.month_styles * len(p_totals)
+        p_styles[-1:-1] = self.weekly_style * len(w_totals)
+        p_totals[-1:-1] = w_totals
+        p_labels[-1:-1] = w_labels
         
         trace0 = go.Bar(
-            x=month_names,
-            y=monthly_totals,
+            x=p_labels,
+            y=p_totals,
             marker=dict(
-                color=month_styles
+                color=p_styles
             )
         )
         data = [trace0]
-        return data, month_names, monthly_totals
+        return data, p_labels, p_totals
 
     # Layout
 
     def compose_layout(self, x, y, weeks, opts):
-        title = """Number of Meals Provided in {month}
-            (Week {week_s} - Week {week_e}) {year} : {meals}""".format(**opts)
+        x_title = """<b>Equivalent of {meals} meals provided in {month} {year}</b><br>(Week {week_s} - Week {week_e})""".format(**opts)
         layout = go.Layout(
             title='<b>{name}</b><br>{year} Weekly Food Donation in KG '.format(**opts),
             titlefont = dict(
@@ -275,7 +247,7 @@ class FoodLinkDonorReport(object):
             xaxis=dict(
                 # set x-axis' labels direction at 45 degree angle
                 tickangle=-45,
-                title=title,
+                title=x_title,
                 titlefont = dict(
                     size=20
                 ),
@@ -308,7 +280,7 @@ class FoodLinkDonorReport(object):
 
     def html_to_pdf(self, html):
 
-        with open(self.fn_html,'w') as fn:
+        with open('temp/' + self.fn_html, 'w') as fn:
             fn.write(html)
 
         call(self.html_to_pdf_process)
@@ -329,11 +301,13 @@ class FoodLinkDonorReport(object):
         return self.ROOT_FOLDER + self.ngo + '/'
 
     def ensure_dest_exists(self):
-        if not os.path.exists( self.path_pdf):
-            os.makedirs( self.path_pdf)
+        for path in ['temp',self.path_pdf]:
+            if not os.path.exists(path):
+                os.makedirs(path)
 
     def clean_temp_files(self):
-        raise NotImplementedError
+        shutil.rmtree('temp')
+
 
     def week_of_month(self, dt):
         """ Returns the week of the month for the specified date.
@@ -345,6 +319,10 @@ class FoodLinkDonorReport(object):
         adjusted_dom = dom + first_day.weekday()
 
         return int(ceil(adjusted_dom/7.0))
+
+    def slice_reporting_month(self, df):
+        mask = (df.datetime > self.start_date) & (df.datetime <= self.end_date)
+        return df[mask]
 
 
 if __name__ == '__main__':
