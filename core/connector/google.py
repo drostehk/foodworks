@@ -233,7 +233,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
         
         # DEVELOPER
-        for ws in wss[13:17]:
+        for ws in wss[13:22]:
         # for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -324,7 +324,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
 
         # DEVELOPER
-        for ws in wss[13:17]:
+        for ws in wss[13:22]:
         # for ws in wss:
             self.parse_dist_weeksheet(ws)
 

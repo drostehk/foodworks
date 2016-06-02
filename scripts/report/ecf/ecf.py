@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import operator as op
 import xlsxwriter
+import calendar
+
 import pdb
 
 import warnings
@@ -62,10 +64,16 @@ class ECFReport(object):
         self.META_FILES_NGO = ['donors']
         self.META_FILES = ['map']
 
+        # Dates
+
         self.PERIOD = (datetime.now() - timedelta(days=28))
         self.MONTH_NUM = self.PERIOD.month
         self.MONTH_NAME = self.PERIOD.strftime('%B')
         self.YEAR_NUM = self.PERIOD.year
+
+        self.start_date = datetime(self.YEAR_NUM, self.MONTH_NUM, 1)
+        self.end_date = datetime(self.YEAR_NUM, self.MONTH_NUM, calendar.monthrange(
+            self.YEAR_NUM, self.MONTH_NUM)[1])
 
         # WHITE & BLACKLISTING
 
@@ -172,8 +180,13 @@ class ECFReport(object):
             
             df.datetime = df.datetime.dt.strftime('%d-%b-%y')
 
+            df = self.slice_reporting_month(df)
+
             df = df.sort_values(by=self.SORT_KEY)
             df = df.set_index(self.SORT_KEY)
+
+            # pdb.set_trace()
+
 
             self.report_to_excel(df)
 
@@ -201,6 +214,8 @@ class ECFReport(object):
             df['meals'] = df['kg'] / self.meal_weight
             
             df.datetime = df.datetime.dt.strftime('%d-%b-%y')
+
+            df = self.slice_reporting_month(df)
 
             df = df.sort_values(by=self.SORT_KEY)
             df = df.set_index(self.SORT_KEY)
@@ -383,7 +398,6 @@ class ECFReport(object):
 
     def get_totals_column(self, df, col):
         offset = 2
-        import pdb; pdb.set_trace()
         totals = df.groupby(level='datetime').sum()
         totals['span'] = df.ix[:,col].groupby(level='datetime').count()
         totals['row_end'] = (totals['span'].cumsum() + offset).astype('int')
@@ -439,6 +453,10 @@ class ECFReport(object):
     def ensure_dest_exists(self):
         if not os.path.exists(self.REPORT_FOLDER):
             os.makedirs(self.REPORT_FOLDER)
+
+    def slice_reporting_month(self, df):
+        mask = (pd.to_datetime(df.datetime) > self.start_date) & (pd.to_datetime(df.datetime) <= self.end_date)
+        return df[mask]
 
 
 

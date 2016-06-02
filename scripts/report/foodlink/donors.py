@@ -78,9 +78,12 @@ class FoodLinkDonorReport(object):
 
     def data_to_pdf(self):
         print('********** START *************')
+        
         df_w, df_m = self.prepare_data()
+
         for donor in df_w.index.unique():
             self.set_fns(donor)
+
             print("\n>>>> {}".format(donor.upper()))
 
             w_totals = df_w.loc[donor,'value'].astype(int).tolist()
@@ -117,7 +120,6 @@ class FoodLinkDonorReport(object):
             fig = go.Figure(data=data, layout=layout)
             html = self.new_iplot(fig)
             
-            self.ensure_dest_exists()
             self.html_to_pdf(html)
 
         self.clean_temp_files()
@@ -151,6 +153,9 @@ class FoodLinkDonorReport(object):
     # Data Wrangling
 
     def prepare_data(self):
+
+        pdb.set_trace()
+
         df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
             fx in self.relevant_csvs()]).fillna(0)
         df = self.merge_donors(df)
@@ -280,6 +285,8 @@ class FoodLinkDonorReport(object):
 
     def html_to_pdf(self, html):
 
+        self.ensure_dest_exists()
+
         with open('temp/' + self.fn_html, 'w') as fn:
             fn.write(html)
 
@@ -306,6 +313,7 @@ class FoodLinkDonorReport(object):
                 os.makedirs(path)
 
     def clean_temp_files(self):
+        self.ensure_dest_exists()
         shutil.rmtree('temp')
 
 
