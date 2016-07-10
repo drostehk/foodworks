@@ -233,7 +233,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
         
         # DEVELOPER
-        for ws in wss[13:22]:
+        for ws in wss[13:26]:
         # for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -284,7 +284,16 @@ class GoogleSourceSheet(Spreadsheet):
             for idx, food_type in enumerate(row[self.other_type]):
                 if food_type is not np.nan:
                     food_volume = row[self.other_volume][idx]
-                    self.df.ix[(self.df.donor == donor) & (self.df.datetime == timestamp), food_type.strip()] = float(food_volume)
+                    donor_idx = (self.df.donor == donor)
+                    date_idx = (self.df.datetime == timestamp)
+                    food_idx = food_type.strip()
+                    if food_idx in self.df and not any(self.df.ix[donor_idx & date_idx, food_idx].isnull()):
+                        self.df.ix[donor_idx & date_idx, food_idx] += float(food_volume)
+                    else:
+                        self.df.ix[donor_idx & date_idx, food_idx] = float(food_volume)
+
+        self.df.ix[:, self.schema] = self.df[self.schema].replace('',np.nan).astype(np.float)
+        self.df = self.df.drop_duplicates().groupby(['organisation_id','programme','datetime','donor'], as_index=False, squeeze=False).sum()
 
     def parse_processing(self):
         wss = self.collect_week_sheets()
@@ -324,7 +333,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
 
         # DEVELOPER
-        for ws in wss[13:22]:
+        for ws in wss[13:26]:
         # for ws in wss:
             self.parse_dist_weeksheet(ws)
 

@@ -16,7 +16,7 @@ Run the scripts from within the root folder so scripts have access to the `core`
 ## Repository Structure
 
 * `archive` - Old analysis
-* `core` - Reusable libraties developed for the project
+* `core` - Reusable libraries developed for the project
 * `scripts` - Executable scripts to transform data and generate reports
     - `report` - Generate Reports
     - `transform` - Processing Scripts for Raw Data

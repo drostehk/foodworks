@@ -154,8 +154,6 @@ class FoodLinkDonorReport(object):
 
     def prepare_data(self):
 
-        pdb.set_trace()
-
         df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
             fx in self.relevant_csvs()]).fillna(0)
         df = self.merge_donors(df)
@@ -166,6 +164,8 @@ class FoodLinkDonorReport(object):
         names = self.split_off_agg_column(df,'donor','name')
         
         df = df.set_index('datetime')
+
+        df = df[df.index < self.end_date]
 
         df_m = df.groupby('donor').resample('M', label='right').sum().sum(axis=1).reset_index()
         df_m = df_m.set_index('donor').join(efficiency).join(names)
@@ -247,14 +247,17 @@ class FoodLinkDonorReport(object):
         layout = go.Layout(
             title='<b>{name}</b><br>{year} Weekly Food Donation in KG '.format(**opts),
             titlefont = dict(
-                size=22
+                size=28
                 ),
             xaxis=dict(
                 # set x-axis' labels direction at 45 degree angle
-                tickangle=-45,
+                # tickangle=-45,
                 title=x_title,
-                titlefont = dict(
+                tickfont=dict(
                     size=20
+                ),
+                titlefont = dict(
+                    size=24
                 ),
                 position = 0
             ),
@@ -266,7 +269,7 @@ class FoodLinkDonorReport(object):
                     l=0,
                     r=0,
                     b=100,
-                    t=40,
+                    t=80,
                     pad=100
                 ),
             annotations=[
@@ -277,6 +280,9 @@ class FoodLinkDonorReport(object):
                     xanchor='center',
                     yanchor='bottom',
                     showarrow=False,
+                    font=dict(
+                        size=18,
+                    )
                 ) for xi, yi in zip(x, y)]
             )
         return layout

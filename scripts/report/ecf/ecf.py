@@ -235,8 +235,6 @@ class ECFReport(object):
         fns_in_stage = sorted(filter(lambda fn: self.stage in fn, fns))
         fns = sorted([fn for fn in fns_in_stage if is_selected(fn)])
 
-        # import pdb; pdb.set_trace()
-
         df = pd.concat([pd.read_csv(self.base_path() + fn,
             encoding='utf_8') for fn in fns])
 
