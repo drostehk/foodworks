@@ -39,6 +39,7 @@ class FoodLinkDonorReport(object):
         
         self.ngo = ngo
         self.meal_weight = 0.585
+        self.pickup_type = 'food'
 
         # Dates
 
@@ -46,6 +47,13 @@ class FoodLinkDonorReport(object):
         self.MONTH_NUM = self.PERIOD.month
         self.MONTH_NAME = self.PERIOD.strftime('%B')
         self.YEAR_NUM = self.PERIOD.year
+
+        self.MONTH_NUM = 4
+        self.MONTH_NAME = 'April'
+        self.MONTH_NUM = 5
+        self.MONTH_NAME = 'May'
+        self.MONTH_NUM = 6
+        self.MONTH_NAME = 'June'
 
         self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         self.month_styles = ['rgba(204,204,204,1)']
@@ -140,7 +148,7 @@ class FoodLinkDonorReport(object):
         )
 
     def set_fns(self,donor):
-        self.fn = "{}.{}.{}.{}.report".format(self.ngo, donor, self.YEAR_NUM, self.MONTH_NUM)
+        self.fn = "{}.{}.{}.{}.{}.report".format(self.ngo, donor, self.YEAR_NUM, self.MONTH_NUM, self.pickup_type)
         self.fn_html = self.fn + '.html'
         self.fn_pdf = self.fn + '.pdf'
         self.html_to_pdf_process = [
@@ -305,7 +313,7 @@ class FoodLinkDonorReport(object):
 
     def relevant_csvs(self):
         return [fn for fn in self.available_csvs() if
-            ".".join([str(self.YEAR_NUM), 'collection']) in fn]
+            ".".join([str(self.YEAR_NUM), 'collection']) in fn and 'Amenities' not in fn]
 
     def donor_csvs(self):            
         return [fn for fn in self.available_csvs() if 'donor' in fn]
