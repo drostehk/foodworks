@@ -453,7 +453,7 @@ class ECFReport(object):
             os.makedirs(self.REPORT_FOLDER)
 
     def slice_reporting_month(self, df):
-        mask = (pd.to_datetime(df.datetime) > self.start_date) & (pd.to_datetime(df.datetime) <= self.end_date)
+        mask = (pd.to_datetime(df.datetime) >= self.start_date) & (pd.to_datetime(df.datetime) <= self.end_date)
         return df[mask]
 
 
