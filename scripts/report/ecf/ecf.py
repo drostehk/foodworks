@@ -39,7 +39,7 @@ class ECFReport(object):
     The only public methods are :
 
         .generate_all_reports()
-        .generate_single_reports(ngo,stage,progammes)
+        .generate_single_reports(ngo,stage,programmes)
 
     """
     def __init__(self, **kwargs):
@@ -87,7 +87,7 @@ class ECFReport(object):
 
         self.SKIP_PROGRAMMES = [u'Amenities']
         self.ONLY_PROGRAMMES = None
-        # self.ONLY_PROGRAMMES = ['ECF Van 01','ECF Van 02','ECF Van 03','General']
+        self.ONLY_PROGRAMMES = ['ECF Van 01','ECF Van 02','ECF Van 03','General']
 
         # Override the defaults
         if kwargs is not None:
@@ -153,6 +153,8 @@ class ECFReport(object):
 
     def generate_report(self):
 
+        pd.set_option("display.max_rows", 500)
+
         fns = self.available_csvs()
         
         df_map = {}
@@ -168,7 +170,7 @@ class ECFReport(object):
             self.SORT_KEY = ['datetime','programme','donor']
 
             df_map['donors'] = self.map_orgs_to_dataframe(fns, 'donor')
-            
+
             df_map[stage] = self.melt_df(df_map[self.stage])
 
             df_merge = df_map[stage].merge(df_map['donors'],how='left',
@@ -185,9 +187,6 @@ class ECFReport(object):
             df = df.sort_values(by=self.SORT_KEY)
             df = df.set_index(self.SORT_KEY)
 
-            # pdb.set_trace()
-
-
             self.report_to_excel(df)
 
         # TODO Split up into Cooked Food // Packaged
@@ -201,9 +200,6 @@ class ECFReport(object):
             self.SORT_KEY = ['datetime','programme','beneficiary']
 
             df_map['beneficiaries'] = self.map_orgs_to_dataframe(fns, 'beneficiary')
-
-            print(df_map['beneficiaries'].programme.value_counts())
-            print(df_map[stage].programme.value_counts())
 
             df_merge = df_map[stage].merge(df_map['beneficiaries'],how='left',
                 left_on=['beneficiary','programme'],right_on=['id','programme'])
@@ -283,6 +279,7 @@ class ECFReport(object):
             'collection' : 'donor',
             'distribution' : 'beneficiary'
         }
+        df[org[self.stage]] = df[org[self.stage]].str.lower()
         df.sort_values(by=['datetime', 'programme', org[self.stage]], inplace=True)
         # TODO FIX THE TRUNCATE
         df.set_index('datetime').truncate(before=period, after=period)
@@ -291,7 +288,8 @@ class ECFReport(object):
 
     def clean_orgs(self, df):
         cols = ['id', 'name_en', 'location', 'programme']
-        df = df[cols]
+        df = df[cols].copy()
+        df.id = df.id.str.lower()
         return df
 
     # XLXWRITER

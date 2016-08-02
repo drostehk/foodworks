@@ -48,12 +48,12 @@ class FoodLinkDonorReport(object):
         self.MONTH_NAME = self.PERIOD.strftime('%B')
         self.YEAR_NUM = self.PERIOD.year
 
-        self.MONTH_NUM = 4
-        self.MONTH_NAME = 'April'
-        self.MONTH_NUM = 5
-        self.MONTH_NAME = 'May'
-        self.MONTH_NUM = 6
-        self.MONTH_NAME = 'June'
+        # self.MONTH_NUM = 4
+        # self.MONTH_NAME = 'April'
+        # self.MONTH_NUM = 5
+        # self.MONTH_NAME = 'May'
+        # self.MONTH_NUM = 6
+        # self.MONTH_NAME = 'June'
 
         self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         self.month_styles = ['rgba(204,204,204,1)']
@@ -94,7 +94,7 @@ class FoodLinkDonorReport(object):
 
             print("\n>>>> {}".format(donor.upper()))
 
-            w_totals = df_w.loc[donor,'value'].astype(int).tolist()
+            w_totals = df_w.loc[[donor],'value'].fillna(0).astype(int).tolist()
             try:
                 w_labels = ['WK'+str(wk) for wk in df_w.loc[donor,'datetime'].dt.week.tolist()]
             except AttributeError:
@@ -104,7 +104,7 @@ class FoodLinkDonorReport(object):
             # print(w_totals)
             # print(w_labels)
 
-            m_totals = df_m.loc[donor,'value'].astype(int).tolist()
+            m_totals = df_m.loc[[donor],'value'].fillna(0).astype(int).tolist()
             try:
                 m_labels = df_m.loc[donor,'datetime'].dt.strftime('%b').str.upper().tolist()
             except AttributeError:
@@ -164,8 +164,11 @@ class FoodLinkDonorReport(object):
 
         df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
             fx in self.relevant_csvs()]).fillna(0)
+
+        df.donor = df.donor.str.lower()
+
         df = self.merge_donors(df)
-        
+
         df.datetime = pd.to_datetime(df.datetime)
         
         efficiency = self.split_off_agg_column(df,'donor','efficiency')
@@ -175,11 +178,14 @@ class FoodLinkDonorReport(object):
 
         df = df[df.index < self.end_date]
 
-        df_m = df.groupby('donor').resample('M', label='right').sum().sum(axis=1).reset_index()
+        df_m = df.groupby('donor').resample('M', 'sum', label='right').sum(1).reset_index()
+
         df_m = df_m.set_index('donor').join(efficiency).join(names)
+        if df_m['efficiency'].isnull().any():
+            raise ValueError(", ".join(df_m[df_m['efficiency'].isnull()].name.values) + " don't have their efficiency set.")
         df_m['value'] =  df_m[0] * df_m['efficiency'] / 100
 
-        df_w = df.groupby('donor').resample('W-MON', label='left').sum().sum(axis=1).reset_index()
+        df_w = df.groupby('donor').resample('W-MON', 'sum', label='left').sum(1).reset_index()
         df_w = df_w.set_index('donor').join(efficiency).join(names)
         df_w['value'] =  df_w[0] * df_w['efficiency'] / 100
         df_w = self.slice_reporting_month(df_w)
@@ -191,9 +197,14 @@ class FoodLinkDonorReport(object):
             fx in self.donor_csvs()])
         cols = ['id','efficiency', 'name_en']
         donors = donors[cols]
+        donors.name_en = donors.name_en.str.strip()
+        donors.id = donors.id.str.strip().str.lower()
+
         donors.columns = ['donor','efficiency', 'name']
-        
-        return df.merge(donors, on='donor')
+        donors = donors.drop_duplicates()
+        donors = donors.sort_values('name').reset_index(drop=True)
+
+        return df.merge(donors, on='donor', how='left')
 
     def split_off_agg_column(self,df,agg,col):
         split_col = df.groupby(agg).min()[col]

@@ -28,13 +28,13 @@ class FoodLinkAmenitiesReport(FoodLinkDonorReport):
         super(FoodLinkAmenitiesReport, self).__init__()
 
         self.pickup_type = 'amenities'
-
-        self.MONTH_NUM = 4
-        self.MONTH_NAME = 'April'
-        self.MONTH_NUM = 5
-        self.MONTH_NAME = 'May'
-        self.MONTH_NUM = 6
-        self.MONTH_NAME = 'June'
+        #
+        # self.MONTH_NUM = 4
+        # self.MONTH_NAME = 'April'
+        # self.MONTH_NUM = 5
+        # self.MONTH_NAME = 'May'
+        # self.MONTH_NUM = 6
+        # self.MONTH_NAME = 'June'
 
         self.path_pdf = self.REPORT_FOLDER + ngo + '/' + str(self.YEAR_NUM) + '/' + \
             str(self.MONTH_NUM) + '/'
