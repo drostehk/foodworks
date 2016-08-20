@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+
+"""Marble Control.
+
+Usage:
+  marbles export
+  marbles reset STAGE
+  marbles report [(donor | funder)] (--for=NGO | --all)
+                 [--year=YEAR] [--month=MONTH]
+                 [--skipstage=PROCESS] [--skip=NGO...]
+  marbles tableau 
+  marbles --version
+  marbles --help
+
+Arguments:
+  STAGE    Marble stage, i.e. structure, progress, or export
+  NGO      Food recovery NGOs
+  PROCESS  Canonical stage, i.e. collection, processing, distirbution
+  YEAR     Reporting year
+  MONTH    Reporting month, or last month in reporting period
+
+
+Options:
+  -h --help            Show this screen.
+  -v --version         Show version.
+  --for ORG            NGO [default: foodlink].
+  --all                Recursively apply to all NGOs.
+  --skip NGO           Food NGOs to exclude
+  --skipstage PROCESS  Canonical stages to exclude
+  --year YEAR          Reporting year [default: latest]
+  --month MONTH        Reporting month [default: latest]
+
+Examples:
+  marbles export            # Export all 
+  marbles reset structure   # Run if new sheets were added to source
+  marbles reset progress    # Run if you want to 
+  marbles reset export      # Removes all exported dat
+  marbles report --for FoodLink --year 2014 --year 3
+                            # Generate all Foodlink reports for March 2014
+  marbles report funder --all
+                            # Generate all NGO's reports for funders
+  marbles report donor --for Evergreen
+                            # Generate Evergreen donor reports 
+  marbles report donor --all --skipstage processing --skip Evergreen PSC
+                            # Generate reports for collections and distribition
+                            # stages for all NGOs, except evergreen and psc
+  marbles tableau           # Generate the tableau data structure
+"""
+from docopt import docopt
+
+
+if __name__ == '__main__':
+    arguments = docopt(__doc__, version='Marble Control - Alpha')
+    print(arguments)
