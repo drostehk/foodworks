@@ -141,14 +141,14 @@ class MarbleControl(object):
         path = 'structure.json'
         try:
             os.remove("{}{}".format(self.ROOT,path))
-        except FileNotFoundError:
+        except OSError:
             pass
 
     def reset_progress(self):
         path = 'progress.json'
         try:
             os.remove("{}{}".format(self.ROOT,path))
-        except FileNotFoundError:
+        except OSError:
             pass
 
     def reset_export(self):
