@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
-"""Marble Control.
+```python
+
+Marble Control.
 
 Usage:
   marbles export
   marbles reset STAGE
   marbles report [(donor | funder)] (--for=NGO | --all)
                  [--year=YEAR] [--month=MONTH]
-                 [--skipstage=PROCESS] [--skip=NGO...]
+                 [--skipstages=PROCESS]... [--skip=NGO]...
   marbles tableau 
   marbles --version
   marbles --help
@@ -41,11 +43,11 @@ Examples:
                             # Generate all NGO's reports for funders
   marbles report donor --for Evergreen
                             # Generate Evergreen donor reports 
-  marbles report donor --all --skipstage processing --skip Evergreen PSC
+  marbles report donor --all --skipstage processing --skip Evergreen --skipPSC
                             # Generate reports for collections and distribition
                             # stages for all NGOs, except evergreen and psc
   marbles tableau           # Generate the tableau data structure
-"""
+```
 from docopt import docopt
 
 
