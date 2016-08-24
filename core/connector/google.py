@@ -168,8 +168,11 @@ class GoogleSourceSheet(Spreadsheet):
         # TODO ECF also has PRogrammes in other stages.
 
         if self.stage in ['Collection','Distribution']:
-            self.programme = metadata['programme']
-   
+            try:
+                self.programme = metadata['programme']
+            except KeyError:
+                self.programme = 'General'
+
 
     def set_std_cols(self):
         if(self.stage == "Collection"):
@@ -179,6 +182,7 @@ class GoogleSourceSheet(Spreadsheet):
                 self.std_cols = ['organisation_id','programme','datetime', 'beneficiary']
                 self.export_cols = ['organisation_id','programme','datetime', 'beneficiary','category', 'kg']
             else:
+                self.export_cols = ['programme', 'datetime', 'beneficiary', 'kg']
                 self.std_cols = ['datetime', 'beneficiary_id', 'distribution_amount']
         elif(self.stage == "Processing"):
             self.std_cols = ['datetime', 'na_1', 'na_2', 'compost_amount', 'disposal_amount', 'storage_amount']
@@ -206,9 +210,13 @@ class GoogleSourceSheet(Spreadsheet):
         
         elif self.stage == 'Distribution':
             self.index_cols = ['weekday','beneficiary']
-            self.col_headers = ['category', 'distribution_amount']
-            self.schema = ['category', 'Volume (KG)']
-        
+            if (self.parsing_code == 'ecf'):
+                self.col_headers = ['category', 'distribution_amount']
+                self.schema = ['category', 'Volume (KG)']
+            else:
+                self.col_headers = ['distribution_amount']
+                self.schema = ['分發人次']
+
         elif self.stage == 'Processing':
             self.col_headers = self.std_cols
             self.schema = self.std_cols
@@ -338,7 +346,6 @@ class GoogleSourceSheet(Spreadsheet):
             self.parse_dist_weeksheet(ws)
 
         self.df.datetime = pd.to_datetime(self.df.datetime)
-
         self.df.columns = self.export_cols
 
         return self.df
@@ -352,38 +359,30 @@ class GoogleSourceSheet(Spreadsheet):
                 return
         except IndexError:
             return
-      
+
+        collection = pd.DataFrame(self.get_data_rows(values))
+        print('Parsing Week', ws.title, '' if (len(collection.index) > header_offset) else '(No Records)')
+
+        collection.columns = collection.iloc[1].tolist()
+        beneficiaries = collection.iloc[header_offset:, 1]
+        timestamps = collection.iloc[header_offset:, 0]
+        raw_df = collection.ix[header_offset:, self.schema]
+        raw_df.columns = self.schema
+        loc = len(self.df)
+
         if self.parsing_code == 'ecf':
-            collection = pd.DataFrame(self.get_data_rows(values))
-            print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
-            collection.columns = collection.iloc[1].tolist()
-            
-            beneficiaries = collection.iloc[header_offset:, 1]
-            timestamps = collection.iloc[header_offset:, 0]
-
-            raw_df = collection.ix[header_offset:, self.schema]
-            raw_df.columns = self.schema
-            loc = len(self.df)
-
             for ridx, row in raw_df.iterrows():
                 beneficiary = beneficiaries[ridx]
                 timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
                 self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(beneficiary, timestamp, row.tolist())
                 loc += 1
-
         else:
-
-            if(len(collection.index) > header_offset):
-                timestamps = collection.iloc[header_offset:, 0]
-                raw_df = collection.ix[header_offset:, :].copy()
-                raw_df.columns = self.schema
-                loc = len(self.df)
-                tempList = []
-                for ridx in timestamps.index.tolist():
-                    timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                    tempList = tempList + [timestamp]
-                raw_df['datetime'] = tempList
-                self.df = self.df.append(raw_df,ignore_index = True)    
+            tempList = []
+            for ridx in timestamps.index.tolist():
+                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+                tempList = tempList + [timestamp]
+            raw_df['datetime'] = tempList
+            self.df = self.df.append(raw_df,ignore_index = True)
 
     def terms_to_sheet(self, sheet_name, terms):
         ssx = self.client.open("{} - {}".format(self.client._ss_prefix, sheet_name))
