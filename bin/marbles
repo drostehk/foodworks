@@ -1,11 +1,9 @@
 #!/usr/bin/env python
-
-```python
-
-Marble Control.
+"""Marble Control.
 
 Usage:
-  marbles export
+  marbles export [--resume]
+  marbles list STAGE
   marbles reset STAGE
   marbles report [(donor | funder)] (--for=NGO | --all)
                  [--year=YEAR] [--month=MONTH]
@@ -23,7 +21,7 @@ Arguments:
 
 
 Options:
-  -h --help            Show this screen.
+  --help            Show this screen.
   -v --version         Show version.
   --for ORG            NGO [default: foodlink].
   --all                Recursively apply to all NGOs.
@@ -31,26 +29,151 @@ Options:
   --skipstage PROCESS  Canonical stages to exclude
   --year YEAR          Reporting year [default: latest]
   --month MONTH        Reporting month [default: latest]
+  --resume             Resume from a previous export
 
 Examples:
-  marbles export            # Export all 
-  marbles reset structure   # Run if new sheets were added to source
-  marbles reset progress    # Run if you want to 
+  marbles export            # Reset all, then export all
+  marbles export --resume   # Skip Reset, resume export
+  marbles list structure    # Print out the saved list of Google Drive Source sheets
+  marbles list progress     # Print out the status of exported NGO Programme source sheets
+  marbles reset all         # Run if you want to delete previously exported data, reset export progress
+  marbles reset structure   # Run if new sheets were added to Source
+  marbles reset progress    # Run if you want to reset the export progress
   marbles reset export      # Removes all exported dat
-  marbles report --for FoodLink --year 2014 --year 3
+  marbles report --for FoodLink --year 2014 --month 3
                             # Generate all Foodlink reports for March 2014
   marbles report funder --all
                             # Generate all NGO's reports for funders
   marbles report donor --for Evergreen
                             # Generate Evergreen donor reports 
-  marbles report donor --all --skipstage processing --skip Evergreen --skipPSC
-                            # Generate reports for collections and distribition
+  marbles report donor --all --skipstage processing --skip Evergreen --skip PSC
+                            # Generate reports for collections and distribution
                             # stages for all NGOs, except evergreen and psc
   marbles tableau           # Generate the tableau data structure
-```
+"""
+
 from docopt import docopt
+from functools import wraps
+import json
+import os
+
+# Decorator
+def print_head(func):
+    @wraps(func)
+    def __wrapper(*args, **kwargs):
+        print("\n{:|^80}\n".format(" " + func.__name__.upper() + " "))
+        func(*args, **kwargs)
+        print("\n{:|^80}\n".format(" " + func.__name__.upper() + " "))
+    return __wrapper
 
 
-if __name__ == '__main__':
-    arguments = docopt(__doc__, version='Marble Control - Alpha')
-    print(arguments)
+class MarbleControl(object):
+    """Control your Marbles.
+    """
+
+    def __init__(self, args):
+        self.args = args
+        self.ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/'
+
+        print("{:o^80}\n".format(' MARBLE CONTROL '))
+        welcome_msg ="""\n            __ |     / /__  ____/__  /__  ____/_  __ \__   |/  /__  ____/
+            __ | /| / /__  __/  __  / _  /    _  / / /_  /|_/ /__  __/
+            __ |/ |/ / _  /___  _  /__/ /___  / /_/ /_  /  / / _  /___
+            ____/|__/  /_____/  /_____|____/  \____/ /_/  /_/  /_____/
+
+                      _______________________________  __
+                      ___  __ \__    |___  _/_  ___/ \/ /
+                      __  / / /_  /| |__  / _____ \__  /
+                      _  /_/ /_  ___ |_/ /  ____/ /_  /
+                      /_____/ /_/  |_/___/  /____/ /_/\n"""
+        print(welcome_msg)
+        print("\n{:o^80}".format(' MARBLE CONTROL '))
+
+        if args['export']:
+            if not args['--resume']:
+                self.reset_structure()
+                self.reset_progress()
+            self.export()
+
+        elif args['list']:
+            self.list(args['STAGE'])
+
+        elif args['reset']:
+            self.reset(args['STAGE'])
+
+        elif args['report']:
+            pass
+
+        elif args['tableau']:
+            self.tableau()
+
+        else:
+            print(args)
+
+    @print_head
+    def list(self, stage):
+        stages = ['progress','structure']
+        if stage not in stages:
+            print("\n{: ^80}\n".format(" << WARNING : INVALID STAGE >> "))
+            print("\n{: ^80}\n".format(" Valid Values : {}".format(", ".join(stages))))
+            return True
+
+        with open("{}{}.json".format(self.ROOT, stage), 'r') as j:
+            print(json.dumps(json.load(j), indent=4, sort_keys=True))
+
+    @print_head
+    def reset(self, stage):
+        if stage == 'all':
+            self.reset_structure()
+            self.reset_progress()
+            self.reset_export()
+        elif stage == 'structure':
+            self.reset_structure()
+        elif stage == 'progress':
+            self.reset_progress()
+        elif stage == 'export':
+            self.reset_export()
+        else:
+            print("\n{: ^80}\n".format(" << WARNING : INVALID STAGE >> "))
+            print("\n{: ^80}\n".format(" Valid Values : all, structure, progress, export "))
+
+    def reset_structure(self):
+        path = 'structure.json'
+        os.remove("{}{}".format(self.ROOT,path))
+
+    def reset_progress(self):
+        path = 'progress.json'
+        os.remove("{}{}".format(self.ROOT,path))
+
+    def reset_export(self):
+        import shutil
+        path = "data/Canonical/"
+        shutil.rmtree("{}{}".format(self.ROOT,path))
+
+    @print_head
+    def export(self):
+        from scripts.export_source_data import export_source_sheets
+        export_source_sheets()
+
+    @print_head
+    def report(self):
+        pass
+
+    @print_head
+    def tableau(self):
+        from scripts.report.generate_tableau_data_model import TableauReport
+        t = TableauReport(skip=self.args['--skip'])
+        t.generate_all_tableau_csv()
+        t.getAllMergeCsv()
+
+
+if __name__ == '__main__' and __package__ is None:
+    version = 'Marble Control - Alpha'
+
+    from os import sys, path
+    sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
+    args = docopt(__doc__, version=version)
+
+    mc = MarbleControl(args)
+

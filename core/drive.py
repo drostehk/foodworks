@@ -29,11 +29,7 @@ MIMETYPE_SHEETS = 'application/vnd.google-apps.spreadsheet'
 
 structure = {}
 
-try:
-    import argparse
-    flags = argparse.ArgumentParser(parents=[tools.argparser]).parse_args()
-except ImportError:
-    flags = None
+flags = None
 
 def get_credentials():
     """Gets valid user credentials from storage.
@@ -138,7 +134,7 @@ def generate_structure():
             deep_list_folders(service, sheet_id, structure[stage], [], 0)
         
         with open('structure.json', 'w') as fp:
-            json.dump(structure, fp)
+            json.dump(structure, fp, indent=4, sort_keys=True)
 
     return structure
 

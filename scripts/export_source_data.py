@@ -14,13 +14,12 @@ from gspread.exceptions import HTTPError
 
 sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
 
-from core.connector import GoogleSourceClient
 from core.transform import SheetToCanonical
 from core.drive import generate_structure
 
 # SKIP_NGO = ['FoodLink', 'NLPRA']
 SKIP_NGO = ['NLPRA']
-ONLY_NGO = ['FoodLink']
+ONLY_NGO = []
 # SKIP_STAGES = ['collection']
 SKIP_STAGES = []
 ONLY_STAGES = ['collection', 'distribution', 'processing']
@@ -32,7 +31,7 @@ progress = {}
 
 def update_progress(progress):
      with open('progress.json', 'w') as fp:
-        json.dump(progress, fp)
+        json.dump(progress, fp, indent=4, sort_keys=True)
 
 try:
     # Delete `structure.json` if you want to refresh the export

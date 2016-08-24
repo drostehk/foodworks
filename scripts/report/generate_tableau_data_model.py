@@ -46,15 +46,15 @@ class TableauReport(object):
         for ngo, programmes in generate_structure()['collection'].iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in ngo.skip:
+            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
                 continue
             else:
                 for programme, sheets in programmes.iteritems():
                     if ngo == 'PSC':
                         if programme in ['KC', 'TM', 'WTS', 'YTM']:
-                            genTableauCsv(ngo, programme)
+                            self.genTableauCsv(ngo, programme)
                     else:
-                        genTableauCsv(ngo, programme)
+                        self.genTableauCsv(ngo, programme)
 
     def meta_csv_to_dataframe(self, ngo):
         metas = {}
@@ -146,21 +146,21 @@ class TableauReport(object):
         print('Exporting...' + ngo + ' - ' + program)
         ## Set file name
 
-        #datafile_name = generate_ngo_dataframe('PCSS', 'General')['collection']
-        #mapfile_name = generate_ngo_dataframe('PCSS', 'General')['map']
-        #donorsfile_name = generate_ngo_dataframe('PCSS', 'General')['donors']
+        #datafile_name = self.generate_ngo_dataframe('PCSS', 'General')['collection']
+        #mapfile_name = self.generate_ngo_dataframe('PCSS', 'General')['map']
+        #donorsfile_name = self.generate_ngo_dataframe('PCSS', 'General')['donors']
         '''
         distfile_name = ngo + '.' + str(year) + '.distribution.csv'
         benffile_name = ngo + '.' + str(year) + '.beneficiary.csv'
         procfile_name = ngo + '.' + str(year) + '.processing.csv'
         finfile_name = ngo + '.' + str(year) + '.finance.csv'
         '''
-        df = generate_ngo_dataframe(ngo, program)['collection']
+        df = self.generate_ngo_dataframe(ngo, program)['collection']
         df = df.drop_duplicates()
         #print(df)
         #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
-        df_map = meta_csv_to_dataframe(ngo)['map']
-        df_donors = generate_ngo_dataframe(ngo, program)['donors']
+        df_map = self.meta_csv_to_dataframe(ngo)['map']
+        df_donors = self.generate_ngo_dataframe(ngo, program)['donors']
 
         ## Collection
         # Reshape the dataframe
@@ -185,10 +185,10 @@ class TableauReport(object):
         df_merge = df_merge.drop('id', 1)
         df_merge['donor_category'] = df_merge['donor_category'].astype(basestring)
 
-        df_merge['isFresh'] = df_merge.apply(check_fresh, axis=1)
-        df_merge['year'] = df_merge.apply(getYear, axis=1)
-        df_merge['month'] = df_merge.apply(getMonth, axis=1)
-        df_merge['day'] = df_merge.apply(getDay, axis=1)
+        df_merge['isFresh'] = df_merge.apply(self.check_fresh, axis=1)
+        df_merge['year'] = df_merge.apply(self.getYear, axis=1)
+        df_merge['month'] = df_merge.apply(self.getMonth, axis=1)
+        df_merge['day'] = df_merge.apply(self.getDay, axis=1)
         #df_merge = df_merge[df_merge['year'] == year]
 
         #print(df_merge.head(20))

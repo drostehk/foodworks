@@ -347,7 +347,10 @@ class GoogleSourceSheet(Spreadsheet):
         
         header_offset = 2
         values = ws.get_all_values()
-        if not any(values[2]):
+        try:
+            if not any(values[2]):
+                return
+        except IndexError:
             return
       
         if self.parsing_code == 'ecf':
