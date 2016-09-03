@@ -46,7 +46,7 @@ class ECFReport(object):
         super(ECFReport, self).__init__()
 
         self.ROOT_FOLDER = 'data/Canonical/'
-        self.REPORT_FOLDER = 'data/Report/'
+        self.REPORT_FOLDER = 'data/Reports/Funder/'
         
         self.STAGES = ['collection','distribution']
         self.STAGE_TITLE = {
@@ -89,14 +89,14 @@ class ECFReport(object):
         self.ONLY_PROGRAMMES = None
         self.ONLY_PROGRAMMES = ['ECF Van 01','ECF Van 02','ECF Van 03','General']
 
+        self.ngo = ''
+        self.stage = ''
+        self.programmes = []
+
         # Override the defaults
         if kwargs is not None:
             for k, v in kwargs.iteritems():
                 setattr(self, k, v)
-        
-        self.ngo = ''
-        self.stage = ''
-        self.programmes = []
 
         self.meal_weight = 0.585
     
@@ -104,11 +104,9 @@ class ECFReport(object):
 
     def generate_all_reports(self, year=datetime.now().year, iteration=1):
 
-        print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
-        
         for stage, ngos in generate_structure().iteritems():
 
-            print('\n### ITERATION ### {}'.format(iteration))
+            # print('\n### ITERATION ### {}'.format(iteration))
             # Selective processing of stages
             if stage in self.SKIP_STAGES:
                 continue
@@ -121,25 +119,16 @@ class ECFReport(object):
             
             for ngo, programmes in ngos.iteritems():
 
-                # Selective processing of NGOS
-                if ngo in self.SKIP_NGO:
-                    continue
+               if ngo == self.ngo:
 
-                # Exclusive processing of NGOS
-                if self.ONLY_NGO and not ngo in self.ONLY_NGO:
-                    print("### SKIP {} ###".format(ngo.upper()))
-                    continue
+                    if not programmes:
+                        continue
 
-                self.ngo = ngo
+                    programmes = [p for p in programmes.keys()]
 
-                if not programmes:
-                    continue
+                    self.programmes = programmes
 
-                programmes = [p for p in programmes.keys()]
-
-                self.programmes = programmes
-                           
-                self.generate_report()
+                    self.generate_report()
 
     
     def generate_single_report(self, ngo, stage, programmes):
@@ -298,11 +287,12 @@ class ECFReport(object):
         opts = {}
         opts['name'] = ".".join([self.ngo, str(self.YEAR_NUM), str(self.MONTH_NUM), self.STAGE_TITLE[self.stage]])
         opts['sheet_name'] = self.STAGE_TITLE[self.stage]
-        opts['dest_xlsx'] = self.REPORT_FOLDER + ".".join([ opts['name'], 'ecf', 'report', 'xlsx'])
+        dir_path = "/".join([self.ngo + " Funder Reports", str(self.YEAR_NUM), str(self.MONTH_NUM)])
+        opts['dest_xlsx'] = self.REPORT_FOLDER + dir_path + '/' + ".".join([opts['name'], 'ECF', 'Report', 'xlsx'])
         opts['xls_header'] = '{} Record of Food {} Activities ({}) - {}'.format(
             datetime.now().year, self.stage, self.STAGE_TITLE[self.stage], self.MONTH_NAME)
         
-        self.ensure_dest_exists()
+        self.ensure_dest_exists(self.REPORT_FOLDER + dir_path + '/')
 
         print('Report generating to: ' + opts['dest_xlsx'])
         
@@ -446,9 +436,9 @@ class ECFReport(object):
 
         return df
 
-    def ensure_dest_exists(self):
-        if not os.path.exists(self.REPORT_FOLDER):
-            os.makedirs(self.REPORT_FOLDER)
+    def ensure_dest_exists(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
 
     def slice_reporting_month(self, df):
         mask = (pd.to_datetime(df.datetime) >= self.start_date) & (pd.to_datetime(df.datetime) <= self.end_date)

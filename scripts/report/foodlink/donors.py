@@ -66,12 +66,12 @@ class FoodLinkDonorReport(object):
         # Filenames
         
         self.ROOT_FOLDER = 'data/Canonical/'
-        self.REPORT_FOLDER = 'data/Report/' 
+        self.REPORT_FOLDER = 'data/Reports/Donors/'
         
         self.fn = ''
         self.fn_html = self.fn + '.html'
         self.fn_pdf  = self.fn + '.pdf'
-        self.path_pdf = self.REPORT_FOLDER + ngo + '/' + str(self.YEAR_NUM) + '/' + \
+        self.path_pdf = self.REPORT_FOLDER + ngo + " Donor Reports" + '/' + str(self.YEAR_NUM) + '/' + \
             str(self.MONTH_NUM) + '/'
 
         # System Calls
