@@ -3,9 +3,13 @@
 from __future__ import (absolute_import, division, print_function)
 
 import plotly.graph_objs as go
-from donors import FoodLinkDonorReport
-from datetime import datetime
-import calendar
+
+try:
+    from donors import FoodLinkDonorReport
+except ImportError:
+    import sys, os
+    sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+    from foodlink.donors import FoodLinkDonorReport
 
 
 class FoodLinkAmenitiesReport(FoodLinkDonorReport):
@@ -28,20 +32,6 @@ class FoodLinkAmenitiesReport(FoodLinkDonorReport):
         super(FoodLinkAmenitiesReport, self).__init__()
 
         self.pickup_type = 'amenities'
-        #
-        # self.MONTH_NUM = 4
-        # self.MONTH_NAME = 'April'
-        # self.MONTH_NUM = 5
-        # self.MONTH_NAME = 'May'
-        # self.MONTH_NUM = 6
-        # self.MONTH_NAME = 'June'
-
-        self.path_pdf = self.REPORT_FOLDER + ngo + '/' + str(self.YEAR_NUM) + '/' + \
-            str(self.MONTH_NUM) + '/'
-
-        self.start_date = datetime(self.YEAR_NUM, self.MONTH_NUM, 1)
-        self.end_date = datetime(self.YEAR_NUM, self.MONTH_NUM, calendar.monthrange(
-            self.YEAR_NUM, self.MONTH_NUM)[1])
 
     # PRIVATE
 
@@ -100,6 +90,5 @@ if __name__ == '__main__':
     opts = {
         "ngo": 'FoodLink',
     }
-
     report = FoodLinkAmenitiesReport(**opts)
     report.data_to_pdf()
