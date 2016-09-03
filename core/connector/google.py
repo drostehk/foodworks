@@ -142,6 +142,9 @@ class GoogleSourceSheet(Spreadsheet):
         self.set_schema()
         self.set_df()
 
+        # Shared
+        self.wk = None
+
 
     def parse_meta_sheet(self):
         ws = self.worksheet('meta')
@@ -259,11 +262,14 @@ class GoogleSourceSheet(Spreadsheet):
         return self.df
 
     def parse_collection_weeksheet(self, ws):
+        self.wk = ws.title
         print('Parsing Week', ws.title)
         header_offset = 2
         values = ws.get_all_values()
-        if not any(values[2]):
-            print('>> NO DATA <<')
+        try:
+            if not any(values[2]):
+                return
+        except IndexError:
             return
         
         collection = pd.DataFrame(self.get_data_rows(values))
@@ -311,6 +317,7 @@ class GoogleSourceSheet(Spreadsheet):
         return self.df
 
     def parse_processing_weeksheet(self, ws):
+        self.wk = ws.title
         header_offset = 2
         values = ws.get_all_values()
         collection = pd.DataFrame(values)
@@ -351,6 +358,7 @@ class GoogleSourceSheet(Spreadsheet):
         return self.df
 
     def parse_dist_weeksheet(self, ws):
+        self.wk = ws.title
         
         header_offset = 2
         values = ws.get_all_values()
@@ -449,9 +457,14 @@ class GoogleSourceSheet(Spreadsheet):
     def get_data_rows(self, rows):
         return [row for row in rows if any(row)]
 
-    def weekday_to_date(self, monday_date_as_str , week_day):
+    def weekday_to_date(self, monday_date_as_str, week_day):
         monday_date = datetime.datetime.strptime(monday_date_as_str, '%Y-%m-%d')
-        days_offset = self.weekdays.index(week_day.title())
+        try:
+            days_offset = self.weekdays.index(week_day.title())
+        except ValueError:
+            print("\n{: ^80}\n".format(" << ERROR : INVALID DAY OF WEEK >> "))
+            print("\n{: ^80}\n".format(" Inspect {} {} {} WK {}, look for missing value".format(self.org, self.year, self.stage, self.wk)))
+            raise SystemExit(0)
         record_date = monday_date + datetime.timedelta(days=days_offset)
         return record_date
 

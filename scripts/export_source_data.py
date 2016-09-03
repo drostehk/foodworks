@@ -68,7 +68,6 @@ def check_or_set(base, key, status=None):
 def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check):
     
     if not skip_progress_check and progress_check(stage, ngo, programme):
-        print(skip_progress_check)
         if progress[stage][ngo][programme]:
             print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
         else:
