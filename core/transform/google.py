@@ -3,12 +3,15 @@
 __author__ = 'io'
 
 import os
-import datetime
 import pandas as pd
 import os.path as op
+import sys
 
 from ..connector import GoogleSourceClient
 from ..credentials import getGoogleCredentials
+
+sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+from scripts import  print_status, print_sub_header
 
 
 class CanonicalTransformer(object):
@@ -199,4 +202,4 @@ class SheetToCanonical(CanonicalTransformer):
         
 
     def print_sheet_header(self):
-        print '\n***', self.stage, '-', self.year, '***\n'
+        print_sub_header("{} | {}".format(self.stage.upper(), self.year))

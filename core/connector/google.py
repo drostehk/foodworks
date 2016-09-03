@@ -3,6 +3,7 @@
 from __future__ import (absolute_import, division, print_function, unicode_literals)
 
 import re
+import sys, os
 import datetime
 import numpy as np
 import pandas as pd
@@ -14,6 +15,9 @@ from gspread.exceptions import SpreadsheetNotFound
 from gspread.utils import *
 
 from ..credentials import getGoogleCredentials
+
+sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+from scripts import print_status
 
 _url_key_re_v1 = re.compile(r'key=([^&#]+)')
 _url_key_re_v2 = re.compile(r'spreadsheets/d/([^&#]+)/edit')
@@ -258,21 +262,22 @@ class GoogleSourceSheet(Spreadsheet):
 
         # Nobody is using units 
         # self.create_units_keys(terms)
-
+        print('\n')
         return self.df
 
     def parse_collection_weeksheet(self, ws):
         self.wk = ws.title
-        print('Parsing Week', ws.title)
         header_offset = 2
         values = ws.get_all_values()
         try:
             if not any(values[2]):
+                print_status("Skipped", 'Weekly Sheet |   0 rows', ws.title)
                 return
         except IndexError:
             return
         
         collection = pd.DataFrame(self.get_data_rows(values))
+        print_status("Parsing", 'Weekly Sheet | {:>3} rows'.format(len(collection)), ws.title)
 
         collection.columns = collection.iloc[1].tolist()
         donors = collection.iloc[header_offset:, 1]
@@ -314,6 +319,7 @@ class GoogleSourceSheet(Spreadsheet):
         # DEVELOPER
         for ws in wss:
             self.parse_processing_weeksheet(ws)
+        print('\n')
         return self.df
 
     def parse_processing_weeksheet(self, ws):
@@ -321,25 +327,23 @@ class GoogleSourceSheet(Spreadsheet):
         header_offset = 2
         values = ws.get_all_values()
         collection = pd.DataFrame(values)
-        print('Parsing Week', ws.title, '' if(len(collection.index) > header_offset) else  '(No Records)')
-        #print(collection.iloc[header_offset:, 0])
 
-        if(len(collection.index) > header_offset):
+        if (len(collection.index) > header_offset):
+            print_status("Parsing", 'Weekly Sheet | {:>3} rows'.format(len(collection)), ws.title)
+
             timestamps = collection.iloc[header_offset:, 0]
             raw_df = collection.ix[header_offset:, :].copy()
-            #print(raw_df.columns.values)
             raw_df.columns = self.schema
-            loc = len(self.df)
 
-            #print(raw_df)
-            #print(timestamps)
-            #print(collection.iloc[0,1])
             tempList = []
             for ridx in timestamps.index.tolist():
                 timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
                 tempList = tempList + [timestamp]
             raw_df['datetime'] = tempList
-            self.df = self.df.append(raw_df,ignore_index = True)   
+            self.df = self.df.append(raw_df,ignore_index = True)
+
+        else:
+            print_status("Skipped", 'Weekly Sheet |   0 rows', ws.title + "Wk")
 
 
     def parse_distribution(self):
@@ -355,6 +359,7 @@ class GoogleSourceSheet(Spreadsheet):
         self.df.datetime = pd.to_datetime(self.df.datetime)
         self.df.columns = self.export_cols
 
+        print('\n')
         return self.df
 
     def parse_dist_weeksheet(self, ws):
@@ -369,7 +374,10 @@ class GoogleSourceSheet(Spreadsheet):
             return
 
         collection = pd.DataFrame(self.get_data_rows(values))
-        print('Parsing Week', ws.title, '' if (len(collection.index) > header_offset) else '(No Records)')
+        if (len(collection.index) > header_offset):
+            print_status("Parsing", 'Weekly Sheet | {:>3} rows'.format(len(collection)), ws.title)
+        else:
+            print_status("Skipped", 'Weekly Sheet |   0 rows', ws.title)
 
         collection.columns = collection.iloc[1].tolist()
         beneficiaries = collection.iloc[header_offset:, 1]

@@ -12,8 +12,9 @@ sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) )
 
 from core.transform import SheetToCanonical
 from core.drive import generate_structure
-from scripts import print_error, print_warning
+from scripts import print_error, print_warning, print_status, print_header
 import webbrowser
+import pdb
 
 '''
 SAVE PROGRESS 
@@ -60,13 +61,13 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
     
     if progress_check(stage, ngo, programme):
         if progress[stage][ngo][programme]:
-            print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
+            print_status('complete', "{:<20} {:^16} {:>20}".format(ngo, stage.capitalize(), programme), str(len(sheets)) + ' Yrs')
         else:
-            print('\n>>> MUCH FAIL >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-        return 
+            print_status('failed', "{:<20} {:^16} {:>20}".format(ngo, stage.capitalize(), programme), str(len(sheets)) + ' Yrs')
+        return
 
-    print('\n>>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
-    
+    print_status('exporting', "{:<20} {:^16} {:>20}".format(ngo, stage.capitalize(), programme), str(len(sheets)) + ' Yrs')
+
     if not sheets:
         return
 
@@ -77,28 +78,28 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
 
         ss = SheetToCanonical(**sheet)
         
-        if stage == 'collection':
-            ss.collection_sheets_to_csv()
-            try:
+        try:
+            if stage == 'collection':
+                ss.collection_sheets_to_csv()
                 ss.donors_sheets_to_csv()
-            except ValueError as e:
-                url_base = "https://docs.google.com/spreadsheets/d/"
-                webbrowser.open_new(url_base + sheet['id'])
-                if str(e) == 'Plan shapes are not aligned':
-                    print_error('SHEETS MISALIGNMENT', ['N/A'])
-                elif "invalid literal for float():" in str(e):
-                    print_error('INVALID DATA VALUE', ['Numbers, e.g. 1, 23.23'])
-                raise
 
-        
-        elif stage == 'processing':
-            ss.finance_sheets_to_csv()
-            ss.processing_sheets_to_csv()
-        
-        elif stage == 'distribution':
-            ss.distribution_sheets_to_csv()
-            ss.beneficiary_sheets_to_csv()
+            elif stage == 'processing':
+                ss.finance_sheets_to_csv()
+                ss.processing_sheets_to_csv()
 
+            elif stage == 'distribution':
+                ss.distribution_sheets_to_csv()
+                ss.beneficiary_sheets_to_csv()
+
+        except ValueError as e:
+            url_base = "https://docs.google.com/spreadsheets/d/"
+            webbrowser.open_new(url_base + sheet['id'])
+
+            if str(e) == 'Plan shapes are not aligned':
+                print_error('SHEETS MISALIGNMENT', ['N/A'])
+            elif "invalid literal for float():" in str(e):
+                print_error('INVALID DATA VALUE', ['Numbers, e.g. 1, 23.23'])
+            raise
 
     check_or_set(progress[stage][ngo], programme, True)
 
@@ -110,7 +111,7 @@ def export_source_sheets(iteration=1, **kwargs):
     ONLY_STAGES = ['collection', 'distribution', 'processing']
     YEAR = None
 
-    print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
+    print_header('LOST MARBLES | {}'.format(iteration))
 
     if kwargs is not None:
         for k, v in kwargs.iteritems():
@@ -127,7 +128,7 @@ def export_source_sheets(iteration=1, **kwargs):
 
         check_or_set(progress, stage)
 
-        print('\n### ITERATION ### {}'.format(iteration))
+        print_header('{} | {}'.format(stage, iteration),color='blue')
         # Selective processing of stages
         if stage in SKIP_STAGES:
             continue
@@ -166,7 +167,8 @@ def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, i
         print_warning(str(e), "{} {} has issues - it will be skipped".format(specific_ngo, programme))
         check_or_set(progress[stage][specific_ngo], programme, False)
         export_source_sheets(iteration + 1, **kwargs)
-
+        # DEBUGGING
+        pdb.pm()
     # Refector the Terms
     # ss.terms_sheets_to_csv()
 
