@@ -17,6 +17,7 @@ sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) )
 from core.transform import SheetToCanonical
 from core.drive import generate_structure
 from scripts import print_error, print_warning
+import webbrowser
 
 '''
 SAVE PROGRESS 
@@ -59,9 +60,9 @@ def check_or_set(base, key, status=None):
 '''
 
 
-def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check, year=None):
+def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
     
-    if not skip_progress_check and progress_check(stage, ngo, programme):
+    if progress_check(stage, ngo, programme):
         if progress[stage][ngo][programme]:
             print('\n>>> COMPLETED >>> ', ngo, stage.capitalize(), programme, ' >>> ', len(sheets), 'Yrs')
         else:
@@ -85,12 +86,13 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_
             try:
                 ss.donors_sheets_to_csv()
             except ValueError as e:
+                url_base = "https://docs.google.com/spreadsheets/d/"
+                webbrowser.open_new(url_base + sheet['id'])
                 if str(e) == 'Plan shapes are not aligned':
-                    import webbrowser
-                    url_base = "https://docs.google.com/spreadsheets/d/"
-                    webbrowser.open_new(url_base + sheet['id'])
-                    print_error('INVALID DATA STRUCTURE', ['N/A'])
-                    sys.exit()
+                    print_error('SHEETS MISALIGNMENT', ['N/A'])
+                elif "invalid literal for float():" in str(e):
+                    print_error('INVALID DATA VALUE', ['Numbers, e.g. 1, 23.23'])
+                raise
 
         
         elif stage == 'processing':
@@ -101,10 +103,10 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_
             ss.distribution_sheets_to_csv()
             ss.beneficiary_sheets_to_csv()
 
-    if not skip_progress_check:
-        check_or_set(progress[stage][ngo], programme, True)
 
-def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=False, **kwargs):
+    check_or_set(progress[stage][ngo], programme, True)
+
+def export_source_sheets(iteration=1, **kwargs):
 
     SKIP_NGO = ['NLPRA']
     ONLY_NGO = []
@@ -154,29 +156,20 @@ def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=
                 continue
         
             for programme, sheets in programmes.iteritems():
-
-                if developer_mode:
-                    iterate_over_sheets(stage, specific_ngo, programme, sheets, iteration, skip_progress_check, YEAR)
-
-                else:
-                    retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, skip_progress_check, YEAR, **kwargs)
+                retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, YEAR, **kwargs)
 
 
-def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, skip_progress_check, year, **kwargs):
+def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, year, **kwargs):
     try:
-        fn(stage, specific_ngo, programme, sheets, iteration, skip_progress_check, year)
+        fn(stage, specific_ngo, programme, sheets, iteration, year)
     except HTTPError as e:
         print(e)
-        export_source_sheets(iteration+1, skip_progress_check,**kwargs)
+        export_source_sheets(iteration+1, **kwargs)
 
-    # except Exception as e:
-    #     print(e)
-    #     if not skip_progress_check:
-    #         check_or_set(progress[stage][ngo], programme, False)
-    #         export_source_sheets(iteration+1, skip_progress_check)
-    #     else:
-    #         import pdb; pdb.set_trace()
-
+    except Exception as e:
+        print_warning(str(e), "{} {} has issues - it will be skipped".format(specific_ngo, programme))
+        check_or_set(progress[stage][specific_ngo], programme, False)
+        export_source_sheets(iteration + 1, **kwargs)
 
     # Refector the Terms
     # ss.terms_sheets_to_csv()
