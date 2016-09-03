@@ -122,7 +122,7 @@ def generate_structure():
         with open('structure.json') as fp:
             structure = json.load(fp)
         
-    except :
+    except:
 
         credentials = get_credentials()
         http = credentials.authorize(httplib2.Http())
@@ -132,7 +132,8 @@ def generate_structure():
         for stage, sheet_id in SHEETS.iteritems():
             structure[stage] = defaultdict(dict)
             deep_list_folders(service, sheet_id, structure[stage], [], 0)
-        
+
+        # TODO : Parse the META page for each sheet to collect parse details.
         with open('structure.json', 'w') as fp:
             json.dump(structure, fp, indent=4, sort_keys=True)
 
