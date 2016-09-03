@@ -16,13 +16,7 @@ sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) )
 
 from core.transform import SheetToCanonical
 from core.drive import generate_structure
-
-# SKIP_NGO = ['FoodLink', 'NLPRA']
-SKIP_NGO = ['NLPRA']
-ONLY_NGO = []
-# SKIP_STAGES = ['collection']
-SKIP_STAGES = []
-ONLY_STAGES = ['collection', 'distribution', 'processing']
+from scripts import print_error, print_warning
 
 '''
 SAVE PROGRESS 
@@ -65,7 +59,7 @@ def check_or_set(base, key, status=None):
 '''
 
 
-def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check):
+def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check, year=None):
     
     if not skip_progress_check and progress_check(stage, ngo, programme):
         if progress[stage][ngo][programme]:
@@ -80,11 +74,24 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_
         return
 
     for sheet in sheets:
+        # Only export current year if needed
+        if year and str(year) not in sheet['name']:
+            continue
+
         ss = SheetToCanonical(**sheet)
         
         if stage == 'collection':
             ss.collection_sheets_to_csv()
-            ss.donors_sheets_to_csv()
+            try:
+                ss.donors_sheets_to_csv()
+            except ValueError as e:
+                if str(e) == 'Plan shapes are not aligned':
+                    import webbrowser
+                    url_base = "https://docs.google.com/spreadsheets/d/"
+                    webbrowser.open_new(url_base + sheet['id'])
+                    print_error('INVALID DATA STRUCTURE', ['N/A'])
+                    sys.exit()
+
         
         elif stage == 'processing':
             ss.finance_sheets_to_csv()
@@ -97,10 +104,27 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_
     if not skip_progress_check:
         check_or_set(progress[stage][ngo], programme, True)
 
-def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=False):
+def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=False, **kwargs):
+
+    SKIP_NGO = ['NLPRA']
+    ONLY_NGO = []
+    SKIP_STAGES = []
+    ONLY_STAGES = ['collection', 'distribution', 'processing']
+    YEAR = None
 
     print('\n### LOADING DRIVE STRUCTURE### {}'.format(iteration))
-    
+
+    if kwargs is not None:
+        for k, v in kwargs.iteritems():
+            if k == 'ngo':
+                ONLY_NGO = [v]
+            if k == 'skip':
+                SKIP_NGO = SKIP_NGO + v
+            if k == 'skipstages':
+                SKIP_STAGES = SKIP_STAGES + v
+            if k == 'year':
+                YEAR = SKIP_STAGES + v
+
     for stage, ngos in generate_structure().iteritems():
 
         check_or_set(progress, stage)
@@ -114,17 +138,17 @@ def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=
         if ONLY_STAGES and not stage in ONLY_STAGES:
             continue
         
-        for ngo, programmes in ngos.iteritems():
+        for specific_ngo, programmes in ngos.iteritems():
 
             # Selective processing of NGOS
-            if ngo in SKIP_NGO:
+            if specific_ngo in SKIP_NGO:
                 continue
 
             # Exclusive processing of NGOS
-            if ONLY_NGO and not ngo in ONLY_NGO:
+            if ONLY_NGO and not specific_ngo in ONLY_NGO:
                 continue
 
-            check_or_set(progress[stage], ngo)
+            check_or_set(progress[stage], specific_ngo)
 
             if not programmes:
                 continue
@@ -132,18 +156,18 @@ def export_source_sheets(iteration=1, skip_progress_check=False, developer_mode=
             for programme, sheets in programmes.iteritems():
 
                 if developer_mode:
-                    iterate_over_sheets(stage, ngo, programme, sheets, iteration, skip_progress_check)
+                    iterate_over_sheets(stage, specific_ngo, programme, sheets, iteration, skip_progress_check, YEAR)
 
                 else:
-                    retry_export_on_failed_attempt(iterate_over_sheets, stage, ngo, programme, sheets, iteration, skip_progress_check)
+                    retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, skip_progress_check, YEAR, **kwargs)
 
 
-def retry_export_on_failed_attempt(fn, stage, ngo, programme, sheets, iteration, skip_progress_check):
+def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, skip_progress_check, year, **kwargs):
     try:
-        fn(stage, ngo, programme, sheets, iteration, skip_progress_check)
+        fn(stage, specific_ngo, programme, sheets, iteration, skip_progress_check, year)
     except HTTPError as e:
         print(e)
-        export_source_sheets(iteration+1, skip_progress_check)
+        export_source_sheets(iteration+1, skip_progress_check,**kwargs)
 
     # except Exception as e:
     #     print(e)

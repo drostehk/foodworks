@@ -3,7 +3,7 @@
 """Marble Control.
 
 Usage:
-  marbles export [--resume]
+  marbles export [--resume] [--for=NGO]
   marbles list STAGE
   marbles reset STAGE
   marbles report [(donor | funder)] (--for=NGO | --all)
@@ -16,7 +16,7 @@ Usage:
 Arguments:
   STAGE    Marble stage, i.e. structure, progress, or export
   NGO      Food recovery NGOs
-  PROCESS  Canonical stage, i.e. collection, processing, distirbution
+  PROCESS  Canonical stage, i.e. collection, processing, distribution
   YEAR     Reporting year
   MONTH    Reporting month, or last month in reporting period
 
@@ -24,17 +24,19 @@ Arguments:
 Options:
   --help            Show this screen.
   -v --version         Show version.
-  --for ORG            NGO [default: foodlink].
+  --for ORG            NGO.
   --all                Recursively apply to all NGOs.
   --skip NGO           Food NGOs to exclude
   --skipstage PROCESS  Canonical stages to exclude
-  --year YEAR          Reporting year [default: latest]
-  --month MONTH        Reporting month [default: latest]
+  --year YEAR          Reporting year
+  --month MONTH        Reporting month
   --resume             Resume from a previous export
 
 Examples:
   marbles export            # Reset all, then export all
   marbles export --resume   # Skip Reset, resume export
+  marbles export --resume --for PSC
+                            # Skip Reset, only export data for PSC
   marbles list structure    # Print out the saved list of Google Drive Source sheets
   marbles list progress     # Print out the status of exported NGO Programme source sheets
   marbles reset all         # Run if you want to delete previously exported data, reset export progress
@@ -75,6 +77,8 @@ class MarbleControl(object):
     def __init__(self, args):
         self.args = args
         self.ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + '/'
+        self.valid_ngos = set()
+        self.valid_parsers = {}
 
         welcome_msg ="""\n
                ███╗   ███╗ █████╗ ██████╗ ██████╗ ██╗     ███████╗
@@ -97,6 +101,8 @@ class MarbleControl(object):
             if not args['--resume']:
                 self.reset_structure()
                 self.reset_progress()
+            else:
+                self.confirm_structure()
             self.export()
 
         elif args['list']:
@@ -106,7 +112,7 @@ class MarbleControl(object):
             self.reset(args['STAGE'])
 
         elif args['report']:
-            pass
+            self.report()
 
         elif args['tableau']:
             self.tableau()
@@ -118,8 +124,7 @@ class MarbleControl(object):
     def list(self, stage):
         stages = ['progress','structure']
         if stage not in stages:
-            print("\n{: ^80}\n".format(" << WARNING : INVALID STAGE >> "))
-            print("\n{: ^80}\n".format(" Valid Values : {}".format(", ".join(stages))))
+            print_error("stage", stages, stage)
             return True
 
         with open("{}{}.json".format(self.ROOT, stage), 'r') as j:
@@ -138,8 +143,7 @@ class MarbleControl(object):
         elif stage == 'export':
             self.reset_export()
         else:
-            print("\n{: ^80}\n".format(" << WARNING : INVALID STAGE >> "))
-            print("\n{: ^80}\n".format(" Valid Values : all, structure, progress, export "))
+            print_error("invalid stage", ['all', 'structure', 'progress', 'export'], stage)
 
     def reset_structure(self):
         path = 'structure.json'
@@ -163,11 +167,110 @@ class MarbleControl(object):
     @print_head
     def export(self):
         from scripts.export_source_data import export_source_sheets
-        export_source_sheets()
+
+        opts = {}
+
+        if self.args['--for'] and self.validate_source_ngo():
+            opts["ngo"] = self.ngo
+        if self.args['--skipstages']:
+            opts["skipstages"] = self.args['--skipstages']
+        if self.args['--skip']:
+            opts["skip"] = self.args['--skip']
+
+        export_source_sheets(**opts)
 
     @print_head
     def report(self):
-        pass
+        """" marbles report[(donor | funder)](-- for = NGO | --all)
+                [--year = YEAR] [--month = MONTH]
+                [--skipstages = PROCESS]...[--skip = NGO]...
+        """
+
+        self.confirm_structure()
+        self.set_ngo_parser_mapping()
+
+        if self.args['--all']:
+            for ngo in self.valid_ngos:
+                self.ngo = ngo
+                self.report_ngo()
+
+        elif self.validate_source_ngo():
+            self.report_ngo()
+
+
+    def report_ngo(self):
+
+        if self.args['funder']:
+            self.report_funder()
+
+        elif self.args['donor']:
+            self.report_donor()
+
+        else:
+            self.report_funder()
+            self.report_donor()
+
+
+    def report_funder(self):
+        parser = self.valid_parsers[self.ngo]
+
+        if parser == 'ecf':
+            from scripts.report.ecf.funder import ECFReport
+
+            opts = {
+                "ngo" : self.ngo,
+                'ONLY_STAGES': ['collection', 'distribution']
+            }
+            report = ECFReport(**opts)
+            report.generate_all_reports()
+
+        elif parser == 'foodshare':
+            from scripts.report.foodshare.funder import FoodShareReport
+
+            opts = {
+                "ngo": self.ngo,
+            }
+
+            if self.args['year']:
+                opts['year'] = self.args['year']
+
+            if self.args['month']:
+                opts['month'] = self.args['month']
+
+            report = FoodShareReport(**opts)
+            report.generate_all_reports()
+
+        else:
+            print_error('Invalid Parser', ['ecf','foodshare'], parser)
+
+
+
+    def report_donor(self):
+        parser = self.valid_parsers[self.ngo]
+
+        if parser == 'ecf':
+            from scripts.report.foodlink.amenities import FoodLinkAmenitiesReport
+            from scripts.report.foodlink.donors import FoodLinkDonorReport
+
+            opts = {
+                "ngo": self.ngo,
+            }
+
+            # Amenities
+            report = FoodLinkAmenitiesReport(**opts)
+            report.data_to_pdf()
+
+            # Donors
+            report = FoodLinkDonorReport(**opts)
+            report.data_to_pdf()
+
+
+        elif parser == 'foodshare':
+            raise NotImplementedError
+
+        else:
+            print_error('Invalid Parser', ['ecf', 'foodshare'], parser)
+
 
     @print_head
     def tableau(self):
@@ -177,11 +280,49 @@ class MarbleControl(object):
         t.getAllMergeCsv()
 
 
+    def confirm_structure(self):
+        from core.drive import generate_structure
+
+        try:
+            with open("{}{}.json".format(self.ROOT, 'structure'), 'r') as j:
+                self.structure = json.load(j)
+                self.stages = self.structure.keys()
+                for stage, ngos in self.structure.iteritems():
+                    self.valid_ngos.update(ngos)
+                    for ngo, programme in ngos.iteritems():
+                        for sheet in programme:
+                            pass
+
+            return True
+
+        except IOError:
+            print_warning('Missing structure.json', 'Downloading Source Structure for NGO Validation')
+            generate_structure()
+            self.confirm_structure()
+
+    def validate_source_ngo(self):
+        self.ngo = self.args['--for']
+        if self.ngo in self.valid_ngos:
+            return True
+        else:
+            print_error('Invalid NGO', self.valid_ngos, self.ngo)
+
+    def set_ngo_parser_mapping(self):
+        # TODO : Remove hard-coding of relationship between NGO and parser
+        for ngo in self.valid_ngos:
+            if ngo == 'FoodLink':
+                self.valid_parsers[ngo] = 'ecf'
+            else:
+                self.valid_parsers[ngo] = 'foodshare'
+
+
 if __name__ == '__main__' and __package__ is None:
     version = 'Marble Control - Alpha'
 
     from os import sys, path
     sys.path.append(path.dirname(path.dirname(path.abspath(__file__))))
+
+    from scripts import print_error, print_warning
 
     args = docopt(__doc__, version=version)
 
