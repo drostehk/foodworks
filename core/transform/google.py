@@ -11,7 +11,8 @@ from ..connector import GoogleSourceClient
 from ..credentials import getGoogleCredentials
 
 sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-from scripts import  print_status, print_sub_header
+from scripts import  print_status, print_sub_header, print_data_error
+
 
 
 class CanonicalTransformer(object):
@@ -78,12 +79,21 @@ class SheetToCanonical(CanonicalTransformer):
     def donors_sheets_to_csv(self):
         
         if self.stage == 'Collection':
-                       
+
             df = self.ss.parse_cover_sheet()
 
             csv_dest = self.csv_filename('donors', False)
 
-            df = self.join_if_existing_csv(df, csv_dest) 
+            try:
+                df = self.join_if_existing_csv(df, csv_dest)
+
+            except ValueError as e:
+                if str(e) == 'Plan shapes are not aligned':
+                    aproach = '''Inspect the donor cover sheet - are there any
+                    additional columns? Check if there are any entries outside
+                    of the regular columns.'''
+                    print_data_error('SHEETS MISALIGNMENT', str(e),aproach)
+            return False
 
             self.df_to_csv(df, csv_dest)
 

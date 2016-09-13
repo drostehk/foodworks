@@ -257,9 +257,6 @@ class GoogleSourceSheet(Spreadsheet):
         self.create_translations_keys(terms)
         self.create_mappings_keys(terms)
 
-
-        # Nobody is using units 
-        # self.create_units_keys(terms)
         print('\n')
         return self.df
 
@@ -305,12 +302,14 @@ class GoogleSourceSheet(Spreadsheet):
                     date_idx = (self.df.datetime == timestamp)
                     food_idx = food_type.strip()
                     if food_idx in self.df and not any(self.df.ix[donor_idx & date_idx, food_idx].isnull()):
-                        self.df.ix[donor_idx & date_idx, food_idx] += float(food_volume)
+                        self.df.ix[(donor_idx & date_idx).cumsum() == 1, food_idx] += float(food_volume)
                     else:
-                        self.df.ix[donor_idx & date_idx, food_idx] = float(food_volume)
+                        self.df.ix[(donor_idx & date_idx).cumsum() == 1, food_idx] = float(food_volume)
 
         self.df.ix[:, self.schema] = self.df[self.schema].replace('',np.nan).astype(np.float)
-        self.df = self.df.drop_duplicates().groupby(['organisation_id','programme','datetime','donor'], as_index=False, squeeze=False).sum()
+
+        group_key = ['organisation_id','programme','datetime','donor']
+        self.df = self.df.drop_duplicates().groupby(group_key, as_index=False, squeeze=False).sum()
 
     def parse_processing(self):
         wss = self.collect_week_sheets()
@@ -338,7 +337,7 @@ class GoogleSourceSheet(Spreadsheet):
                 timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
                 tempList = tempList + [timestamp]
             raw_df['datetime'] = tempList
-            self.df = self.df.append(raw_df,ignore_index = True)
+            self.df = self.df.append(raw_df, ignore_index = True)
 
         else:
             print_status("Skipped", 'Weekly Sheet |   0 rows', ws.title + "Wk")
