@@ -172,7 +172,7 @@ class GoogleSourceSheet(Spreadsheet):
                 self.other_value_cols = self.english_other_value_cols
         
         # Programme Settings 
-        # TODO ECF also has PRogrammes in other stages.
+        # TODO ECF also has Programmes in other stages.
 
         if self.stage in ['Collection','Distribution']:
             try:
@@ -189,8 +189,8 @@ class GoogleSourceSheet(Spreadsheet):
                 self.std_cols = ['organisation_id','programme','datetime', 'beneficiary']
                 self.export_cols = ['organisation_id','programme','datetime', 'beneficiary','category', 'kg']
             else:
-                self.export_cols = ['programme', 'datetime', 'beneficiary', 'kg']
-                self.std_cols = ['datetime', 'beneficiary_id', 'distribution_amount']
+                self.std_cols = ['organisation_id','programme','datetime', 'beneficiary_id',]
+                self.export_cols = ['organisation_id','programme','datetime', 'beneficiary', 'kg']
         elif(self.stage == "Processing"):
             self.std_cols = ['datetime', 'na_1', 'na_2', 'compost_amount', 'disposal_amount', 'storage_amount']
         else:
@@ -247,8 +247,6 @@ class GoogleSourceSheet(Spreadsheet):
         wss = self.collect_week_sheets()
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
         
-        # DEVELOPER
-        # for ws in wss[13:30]:
         for ws in wss:
             self.parse_collection_weeksheet(ws)
 
@@ -351,8 +349,6 @@ class GoogleSourceSheet(Spreadsheet):
         
         self.df = self.df.join(pd.DataFrame(columns=self.schema))
 
-        # DEVELOPER
-        # for ws in wss[13:30]:
         for ws in wss:
             self.parse_dist_weeksheet(ws)
 
@@ -386,19 +382,11 @@ class GoogleSourceSheet(Spreadsheet):
         raw_df.columns = self.schema
         loc = len(self.df)
 
-        if self.parsing_code == 'ecf':
-            for ridx, row in raw_df.iterrows():
-                beneficiary = beneficiaries[ridx]
-                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(beneficiary, timestamp, row.tolist())
-                loc += 1
-        else:
-            tempList = []
-            for ridx in timestamps.index.tolist():
-                timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
-                tempList = tempList + [timestamp]
-            raw_df['datetime'] = tempList
-            self.df = self.df.append(raw_df,ignore_index = True)
+        for ridx, row in raw_df.iterrows():
+            beneficiary = beneficiaries[ridx]
+            timestamp = self.weekday_to_date(collection.iloc[0,1], timestamps[ridx])
+            self.df.loc[loc, self.std_cols + self.schema] = self.standard_row(beneficiary, timestamp, row.tolist())
+            loc += 1
 
     def terms_to_sheet(self, sheet_name, terms):
         ssx = self.client.open("{} - {}".format(self.client._ss_prefix, sheet_name))

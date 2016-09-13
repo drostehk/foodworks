@@ -5,18 +5,14 @@ from __future__ import (absolute_import, division, print_function)
 import calendar
 import json
 import os
-import numpy as np
 import pandas as pd
-import pdb
 import plotly.graph_objs as go
-import plotly.plotly as py
 import shutil
 
 from datetime import datetime, timedelta
 from math import ceil
-from plotly import session, tools, utils
+from plotly import tools, utils
 from subprocess import call
-from itertools import repeat
 
 
 class FoodLinkDonorReport(object):
@@ -70,7 +66,7 @@ class FoodLinkDonorReport(object):
         
         self.fn = ''
         self.fn_html = self.fn + '.html'
-        self.fn_pdf  = self.fn + '.pdf'
+        self.fn_pdf = self.fn + '.pdf'
         self.path_pdf = self.REPORT_FOLDER + ngo + " Donor Reports" + '/' + str(self.YEAR_NUM) + '/' + \
             str(self.MONTH_NUM) + '/'
 
@@ -85,8 +81,7 @@ class FoodLinkDonorReport(object):
     # PUBLIC
 
     def data_to_pdf(self):
-        print('********** START *************')
-        
+
         df_w, df_m = self.prepare_data()
 
         for donor in df_w.index.unique():
@@ -131,7 +126,6 @@ class FoodLinkDonorReport(object):
             self.html_to_pdf(html)
 
         self.clean_temp_files()
-        print('********** DONE *************')
 
     def opts(self, df, donor, monthly_total):
         try:

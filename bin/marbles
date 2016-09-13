@@ -231,11 +231,11 @@ class MarbleControl(object):
                 "ngo": self.ngo,
             }
 
-            if self.args['year']:
-                opts['year'] = self.args['year']
+            if self.args['--year']:
+                opts['year'] = self.args['--year']
 
-            if self.args['month']:
-                opts['month'] = self.args['month']
+            if self.args['--month']:
+                opts['month'] = self.args['--month']
 
             report = FoodShareReport(**opts)
             report.generate_all_reports()
@@ -264,9 +264,8 @@ class MarbleControl(object):
             report = FoodLinkDonorReport(**opts)
             report.data_to_pdf()
 
-
         elif parser == 'foodshare':
-            raise NotImplementedError
+            pass
 
         else:
             print_error('Invalid Parser', ['ecf', 'foodshare'], parser)

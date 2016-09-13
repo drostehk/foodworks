@@ -128,7 +128,7 @@ def export_source_sheets(iteration=1, **kwargs):
 
         check_or_set(progress, stage)
 
-        print_header('{} | {}'.format(stage, iteration),color='blue')
+        print_header('{} | {}'.format(stage, iteration), color='blue')
         # Selective processing of stages
         if stage in SKIP_STAGES:
             continue

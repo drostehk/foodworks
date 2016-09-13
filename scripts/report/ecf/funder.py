@@ -10,6 +10,7 @@ import pandas as pd
 import operator as op
 import xlsxwriter
 import calendar
+from scripts import *
 
 import pdb
 
@@ -100,8 +101,6 @@ class ECFReport(object):
 
         self.meal_weight = 0.585
     
-        print('GENERATING REPORT FOR PERIOD\n ', self.YEAR_NUM, '-', self.MONTH_NUM)
-
     def generate_all_reports(self, year=datetime.now().year, iteration=1):
 
         for stage, ngos in generate_structure().iteritems():
@@ -294,15 +293,13 @@ class ECFReport(object):
         
         self.ensure_dest_exists(self.REPORT_FOLDER + dir_path + '/')
 
-        print('Report generating to: ' + opts['dest_xlsx'])
-        
+        print_status('generating', "{:8} {} - {}".format(self.ngo, str(self.YEAR_NUM), self.MONTH_NAME), self.stage)
+
         if self.stage == 'collection':
             self.report_collection_to_excel(df, **opts)
             
         if self.stage == 'distribution':
             self.report_distribution_to_excel(df, **opts)
-
-        print('\n Done!')
 
     def report_collection_to_excel(self, df, name, sheet_name, dest_xlsx, xls_header):
         
@@ -333,7 +330,9 @@ class ECFReport(object):
         self.set_col_widths(workbook, worksheet)
 
         writer.save()
-        
+
+        print_sub_header("DONE | {}".format(sheet_name), 'green', True)
+
 
     def report_distribution_to_excel(self, df, name, sheet_name, dest_xlsx, xls_header):
 
@@ -368,6 +367,9 @@ class ECFReport(object):
         self.set_col_widths(workbook, worksheet)
 
         writer.save()
+
+        print_sub_header("DONE | {}".format(sheet_name), 'green', True)
+
 
     def write_sum_column(self, df, workbook, worksheet, col, dest_col):
 
