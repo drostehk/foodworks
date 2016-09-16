@@ -107,7 +107,7 @@ def list_files(service, parent_id, files):
                 print_status('found', "{:<20} {:^16} {:>20}".format(sn_components[1], sn_components[0].capitalize(), sn_components[2]), programme)
             except IndexError:
                 sheet_name = result['name'].split(' - ')[1]
-                print_status('found', "{:<20} {:^16} {:>20}".format(sheet_name, 'META',''), 'SS')
+                print_status('found', "{:<20} {:^16} {:>20}".format(sheet_name, 'Meta',''), 'SS')
 
             files.append(result)
         page_token = response.get('nextPageToken', None)
