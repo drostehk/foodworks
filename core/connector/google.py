@@ -180,7 +180,6 @@ class GoogleSourceSheet(Spreadsheet):
         if 'parsing_code' in metadata:
             self.parsing_code = metadata['parsing_code']
             if metadata['parsing_code'] == 'ecf':
-                print('PARSING CODE : ECF')
                 self.other_header_cols = self.english_other_header_cols
                 self.other_value_cols = self.english_other_value_cols
         
