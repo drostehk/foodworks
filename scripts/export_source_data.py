@@ -155,6 +155,7 @@ def export_source_sheets(iteration=1, **kwargs):
                 retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, YEAR, **kwargs)
 
     # Export Meta Data
+    print_header('{} | {}'.format('META', iteration), color='white')
     meta = MetaToCanonical()
     meta.meta_sheets_to_csv()
 
