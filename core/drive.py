@@ -8,6 +8,8 @@ from oauth2client import client
 from oauth2client import tools
 from collections import defaultdict
 
+from scripts import *
+
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/drive-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly'
@@ -17,11 +19,13 @@ APPLICATION_NAME = 'Drive API Python Quickstart'
 COLLECTION_ID = '0B4NMjhoRDH9vfnFwRE9PN1JMdkQ2d2tHbzNiaDVsTXVWaGRmTFh1LWpTNGdZd2dNNDJvUG8'
 PROCESSING_ID = '0B4NMjhoRDH9vfkQ2SU9NdEtsam9uWmR3TlliQ3ItQS1sWkxOY2w1a2JMZ2FvaTFlbWY2QW8'
 DISTRIBUTION_ID = '0B4NMjhoRDH9vflZzbF9RX3lDZWNJQVpzZWd3TjZmZDNkUVg5Sk42cFJwNjFkTF84b1RHV00'
+META_ID = '0B8BlMs5QgViMSF9aUWhZbTVlQnc'
 
-SHEETS = {
+SHEET_COLLECTIONS = {
     'collection' : COLLECTION_ID,
     'processing' : PROCESSING_ID,
     'distribution' :DISTRIBUTION_ID,
+    'meta' : META_ID
 }
 
 MIMETYPE_FOLDER = 'application/vnd.google-apps.folder'
@@ -92,7 +96,19 @@ def list_files(service, parent_id, files):
                 "name" : file.get('name'),
                 "id" : file.get('id')
             }
-            print 'SS: {name}'.format(**result)
+            try:
+                sheet_name = result['name'].split(' - ')[1:]
+                if len(sheet_name) > 1:
+                    programme = sheet_name[1]
+                else:
+                    programme = 'GENERAL'
+
+                sn_components = sheet_name[0].split(' ')
+                print_status('found', "{:<20} {:^16} {:>20}".format(sn_components[1], sn_components[0].capitalize(), sn_components[2]), programme)
+            except IndexError:
+                sheet_name = result['name'].split(' - ')[1]
+                print_status('found', "{:<20} {:^16} {:>20}".format(sheet_name, 'META',''), 'SS')
+
             files.append(result)
         page_token = response.get('nextPageToken', None)
         if page_token is None:
@@ -100,6 +116,7 @@ def list_files(service, parent_id, files):
 
 def deep_list_folders(service, parent_id, structure, path, levels):
     results = list_folders(service, parent_id)
+
     for result in results:
         if len(path) > levels + 1:
             path = []
@@ -111,7 +128,7 @@ def deep_list_folders(service, parent_id, structure, path, levels):
             files = []
             structure[path[0]][path[1]] = files
             
-            list_files(service,result['id'], files)
+            list_files(service, result['id'], files)
 
         deep_list_folders(service, result['id'], structure, path, levels+1)        
 
@@ -121,6 +138,7 @@ def generate_structure():
         # Delete `structure.json` if you want to refresh the export
         with open('structure.json') as fp:
             structure = json.load(fp)
+            print_sub_header('Using Known Source Files','green',True)
         
     except:
 
@@ -129,9 +147,18 @@ def generate_structure():
         service = discovery.build('drive', 'v3', http=http)
         structure = {}
 
-        for stage, sheet_id in SHEETS.iteritems():
-            structure[stage] = defaultdict(dict)
-            deep_list_folders(service, sheet_id, structure[stage], [], 0)
+        print_sub_header('Looking for Source Files', 'green', True)
+
+        for stage, collection_id in SHEET_COLLECTIONS.iteritems():
+            print_sub_header(stage)
+            if stage != 'meta':
+                structure[stage] = defaultdict(dict)
+                deep_list_folders(service, collection_id, structure[stage], [], 0)
+            else:
+                meta_structure = []
+                list_files(service, collection_id, meta_structure)
+                with open('meta.json', 'w') as fp:
+                    json.dump(meta_structure, fp, indent=4, sort_keys=True)
 
         # TODO : Parse the META page for each sheet to collect parse details.
         with open('structure.json', 'w') as fp:

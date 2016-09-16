@@ -21,7 +21,7 @@ def print_header(header, color='red'):
     msg = colored('{:^80}'.format(header.upper()), color, attrs=['reverse','bold'])
     print('\n')
     print(msg)
-    print('\n')
+    print('')
 
 def print_sub_header(header, color='red',center=False):
     print(' ')

@@ -10,11 +10,10 @@ from gspread.exceptions import HTTPError
 
 sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
 
-from core.transform import SheetToCanonical
+from core.transform import SheetToCanonical, MetaToCanonical
 from core.drive import generate_structure
 from scripts import print_error, print_warning, print_status, print_header
 import webbrowser
-import pdb
 
 '''
 SAVE PROGRESS 
@@ -58,7 +57,7 @@ def check_or_set(base, key, status=None):
 
 
 def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
-    
+
     if progress_check(stage, ngo, programme):
         if progress[stage][ngo][programme]:
             print_status('complete', "{:<20} {:^16} {:>20}".format(ngo, stage.capitalize(), programme), str(len(sheets)) + ' Yrs')
@@ -155,22 +154,23 @@ def export_source_sheets(iteration=1, **kwargs):
             for programme, sheets in programmes.iteritems():
                 retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, YEAR, **kwargs)
 
+    # Export Meta Data
+    meta = MetaToCanonical()
+    meta.meta_sheets_to_csv()
+
 
 def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, year, **kwargs):
     try:
         fn(stage, specific_ngo, programme, sheets, iteration, year)
     except HTTPError as e:
-        print(e)
+        print_warning("HTTP " + str(e)[:3], "Google Drive Connection Lost - {} Marbles Dropped".format(iteration))
         export_source_sheets(iteration+1, **kwargs)
 
     except Exception as e:
         print_warning(str(e), "{} {} has issues - it will be skipped".format(specific_ngo, programme))
         check_or_set(progress[stage][specific_ngo], programme, False)
         export_source_sheets(iteration + 1, **kwargs)
-        # DEBUGGING
-        pdb.pm()
-    # Refector the Terms
-    # ss.terms_sheets_to_csv()
+
 
 if __name__ == '__main__':
     export_source_sheets()

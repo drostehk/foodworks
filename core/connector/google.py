@@ -26,6 +26,7 @@ class GoogleSourceClient(Client):
     """Connected for Google Sheets"""
 
     _ss_prefix = 'FoodWorks Data'
+    _meta_prefix = 'FoodWorks Meta'
 
     def __init__(self, auth):
         """Specify which data source to connect to"""
@@ -54,18 +55,15 @@ class GoogleSourceClient(Client):
         for elem in feed.findall(_ns('entry')):
             elem_title = elem.find(_ns('title')).text
             if elem_title.strip() == ss_name:
-                return GoogleSourceSheet(self, elem, org, stage, year)
+                return GoogleSourceSheet(self, elem, org=org, stage=stage, year=year)
         else:
             raise SpreadsheetNotFound
 
-    def open_by_key(self, key, stage, org, year):
+    def open_by_key(self, key, cls='source', **kwargs):
         """Opens a spreadsheet specified by `key`, returning a :class:`~gspread.Spreadsheet` instance.
         :param key: A key of a spreadsheet as it appears in a URL in a browser.
         :raises gspread.SpreadsheetNotFound: if no spreadsheet with
                                              specified `key` is found.
-        >>> c = gspread.Client(auth=('user@example.com', 'qwertypassword'))
-        >>> c.login()
-        >>> c.open_by_key('0BmgG6nO_6dprdS1MN3d3MkdPa142WFRrdnRRUWl1UFE')
         """
 
         feed = self.get_spreadsheets_feed()
@@ -74,11 +72,17 @@ class GoogleSourceClient(Client):
                                   elem.findall(_ns('link')))
             m = _url_key_re_v1.search(alter_link.get('href'))
             if m and m.group(1) == key:
-                return GoogleSourceSheet(self, elem, org, stage, year)
+                if cls == 'source':
+                    return GoogleSourceSheet(self, elem, **kwargs)
+                elif cls == 'meta':
+                    return GoogleMetaSheet(self, elem, **kwargs)
 
             m = _url_key_re_v2.search(alter_link.get('href'))
             if m and m.group(1) == key:
-                return GoogleSourceSheet(self, elem, org, stage, year)
+                if cls == 'source':
+                    return GoogleSourceSheet(self, elem, **kwargs)
+                elif cls == 'meta':
+                    return GoogleMetaSheet(self, elem, **kwargs)
 
         else:
             raise SpreadsheetNotFound
@@ -101,15 +105,24 @@ class GoogleSourceClient(Client):
         client.login()
         return client
 
+class GoogleMetaSheet(Spreadsheet):
+    def __init__(self, client, feed_entry):
+        super(GoogleMetaSheet, self).__init__(client, feed_entry)
 
 class GoogleSourceSheet(Spreadsheet):
 
-    def __init__(self, client, feed_entry, organisation, stage="Collection", year=datetime.datetime.now().year):
+    def __init__(self, client, feed_entry, **kwargs):
         super(GoogleSourceSheet, self).__init__(client, feed_entry)
 
-        self.org = organisation
-        self.stage = stage
-        self.year = year
+        # Defaults
+        self.org = 'FoodLink'
+        self.stage = 'Collection'
+        self.year = datetime.datetime.now().year
+
+        # Override the defaults (org,stage,year)
+        if kwargs is not None:
+            for k, v in kwargs.iteritems():
+                setattr(self, k, v)
 
         # FoodShare Settings
         self.chinese_weekdays = [u'星期一', u'星期二', u'星期三', u'星期四', u'星期五', u'星期六', u'星期日']
@@ -388,7 +401,7 @@ class GoogleSourceSheet(Spreadsheet):
             loc += 1
 
     def terms_to_sheet(self, sheet_name, terms):
-        ssx = self.client.open("{} - {}".format(self.client._ss_prefix, sheet_name))
+        ssx = self.client.open("{} - {}".format(self.client._meta_prefix, sheet_name))
         ws = ssx.get_worksheet(0)
 
         orgs = ws.col_values(1)
@@ -406,30 +419,16 @@ class GoogleSourceSheet(Spreadsheet):
 
         if len(current_refs) == 0:
             for term in terms:
-                print(sheet_name, '>>>', term)
+                print_status('NewTerm', sheet_name, term)
                 ws.append_row([self.org, self.schema_version, self.programme, term])
         else:
             existing_terms = zh_terms[list(current_refs)].tolist()
             new_terms = set(terms).difference(existing_terms)
             if len(new_terms) > 0:
                 for term in new_terms:
-                    print(sheet_name, '>>> ', term)
+                    print_status('NewTerm', sheet_name, term)
                     ws.append_row([self.org, self.schema_version, self.programme, term])
 
-    def collect_terms_sheets(self):
-        sheet_names = {
-                'i18n' : 'Translations',
-                'map' : 'Mappings',
-                'units' : 'Units'
-            }
-
-        for code, name in sheet_names.iteritems():
-            ssx = self.client.open("{} - {}".format(self.client._ss_prefix, name))
-
-            ws = ssx.get_worksheet(0)
-
-            yield ws.get_all_values(), code
- 
 
     def collect_week_sheets(self):
         return [ws for ws in self.worksheets() if _is_week_number(ws.title)]

@@ -6,18 +6,16 @@ import os
 import pandas as pd
 import os.path as op
 import sys
+import json
 
 from ..connector import GoogleSourceClient
 from ..credentials import getGoogleCredentials
 
 sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-from scripts import  print_status, print_sub_header, print_data_error
-
+from scripts import print_sub_header, print_data_error, print_status
 
 
 class CanonicalTransformer(object):
-
-    datadir = ''
 
     def __init__(self, datadir=''):
         self.datadir = datadir
@@ -34,6 +32,41 @@ class CanonicalTransformer(object):
         pass
 
 
+class MetaToCanonical(CanonicalTransformer):
+
+    def __init__(self, dest='data/Canonical/'):
+        super(MetaToCanonical, self).__init__()
+
+        self.client = GoogleSourceClient.connect(getGoogleCredentials())
+        self.dest = dest
+
+
+    # Meta Sheets to CSV
+
+    def collect_terms_sheets(self):
+        with open('meta.json') as fp:
+            meta = json.load(fp)
+
+        codes = {
+            'Translations': 'i18n',
+            'Mappings': 'map',
+            'Units': 'units',
+            'NGO Master' : 'ngo'
+        }
+
+        for sheet in meta:
+            ssx = self.client.open_by_key(sheet['id'], 'meta')
+            ws = ssx.get_worksheet(0)
+
+            yield ws.get_all_values(), codes[sheet['name'].split(' - ')[1]]
+
+    def meta_sheets_to_csv(self):
+        for data, code in self.collect_terms_sheets():
+            df = pd.DataFrame(data)
+            print_status('exporting', "{:<20} {:^16} {:>20}".format(code, '', ''), str(len(df)) + 'px')
+            df.to_csv(self.dest + code + '.csv', encoding="utf-8", index=False, header=False)
+
+
 class SheetToCanonical(CanonicalTransformer):
     
     def __init__(self, name, id, dest='data/Canonical/'):
@@ -43,6 +76,7 @@ class SheetToCanonical(CanonicalTransformer):
         super(SheetToCanonical, self).__init__()
 
         self.client = GoogleSourceClient.connect(getGoogleCredentials())
+
         self.dest   = dest
 
         name        = name.split()
@@ -58,7 +92,7 @@ class SheetToCanonical(CanonicalTransformer):
         if not op.exists(self.csv_path):
             os.makedirs(self.csv_path)
 
-        self.ss = self.client.open_by_key(id, self.stage, self.org, self.year)
+        self.ss = self.client.open_by_key(id, org=self.org, stage=self.stage, year=self.year)
 
     # Collection Sheets to CSV
 
@@ -154,14 +188,6 @@ class SheetToCanonical(CanonicalTransformer):
         else:
             self.print_sheet_header()
             raise NotImplementedError
-
-
-    # Meta Sheets to CSV
-
-    def terms_sheets_to_csv(self):
-        for sheet, code in self.ss.collect_terms_sheets():
-            df = pd.DataFrame(sheet)
-            df.to_csv(self.dest + code + '.csv', encoding="utf-8", index=False, header=False)
 
 
     # Utility Functions

@@ -68,6 +68,7 @@ data/
 #Caching
 progress.json
 structure.json
+meta.json
 
 #Tableau
 tableau/
