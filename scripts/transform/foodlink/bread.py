@@ -15,4 +15,4 @@ xl_file = pd.ExcelFile(file_name)
 dfs = {sheet_name: xl_file.parse(sheet_name)
           for sheet_name in xl_file.sheet_names}
 
-dfs['Source'].to_csv(export_dir + export_name, encoding="utf-8", index=False, date_format='%Y-%m-%d')
+dfs['Source'].to_csv(export_dir + export_name, encoding="utf8", index=False, date_format='%Y-%m-%d')

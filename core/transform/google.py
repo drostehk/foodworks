@@ -64,7 +64,7 @@ class MetaToCanonical(CanonicalTransformer):
         for data, code in self.collect_terms_sheets():
             df = pd.DataFrame(data)
             print_status('exporting', "{:<20} {:^16} {:>20}".format(code, '', ''), str(len(df)) + 'px')
-            df.to_csv(self.dest + code + '.csv', encoding="utf-8", index=False, header=False)
+            df.to_csv(self.dest + code + '.csv', encoding="utf8", index=False, header=False)
 
 
 class SheetToCanonical(CanonicalTransformer):
@@ -121,14 +121,16 @@ class SheetToCanonical(CanonicalTransformer):
             try:
                 df = self.join_if_existing_csv(df, csv_dest)
                 self.df_to_csv(df, csv_dest)
+
             except ValueError as e:
+
                 if str(e) == 'Plan shapes are not aligned':
-                    aproach = '''Inspect the donor cover sheet - are there any
+                    approach = '''Inspect the donor cover sheet - are there any
                     additional columns? Check if there are any entries outside
                     of the regular columns.'''
-                    print_data_error('SHEETS MISALIGNMENT', str(e),aproach)
-            return False
-            #self.df_to_csv(df, csv_dest)
+                    print_data_error('SHEETS MISALIGNMENT', str(e), approach )
+
+                raise
 
         else:
             raise NotImplementedError
@@ -216,7 +218,7 @@ class SheetToCanonical(CanonicalTransformer):
 
 
     def df_to_csv(self, df, csv_dest):
-        df.to_csv(csv_dest, encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        df.to_csv(csv_dest, encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
     def set_programme(self, name):
@@ -230,9 +232,9 @@ class SheetToCanonical(CanonicalTransformer):
 
     def join_if_existing_csv(self, df, csv_dest):
         if op.isfile(csv_dest):
-            df_old = pd.read_csv(csv_dest)
+            df_old = pd.read_csv(csv_dest, encoding='utf8')
             df = pd.concat([df_old, df])
-            df.drop_duplicates(subset='id', keep='last', inplace=True)
+            df = df.drop_duplicates(subset='id', keep='last')
         return df
         
 

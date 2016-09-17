@@ -156,7 +156,7 @@ class FoodLinkDonorReport(object):
 
     def prepare_data(self):
 
-        df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
+        df = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx, encoding='utf8') for
             fx in self.relevant_csvs()]).fillna(0)
 
         df.donor = df.donor.str.lower()
@@ -187,7 +187,7 @@ class FoodLinkDonorReport(object):
         return df_w[['datetime','name','value']], df_m[['datetime','name','value']]
 
     def merge_donors(self, df):
-        donors = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx) for
+        donors = pd.concat([pd.read_csv(self.ROOT_FOLDER + self.ngo + '/' + fx, encoding='utf8') for
             fx in self.donor_csvs()])
         cols = ['id','efficiency', 'name_en']
         donors = donors[cols]

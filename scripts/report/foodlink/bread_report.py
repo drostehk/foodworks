@@ -22,7 +22,7 @@ def generate_bread_reprot(bakery_chain, date):
     #report_dir = "/Users/DicksonK/Google Drive/FoodWorks/Report/bread/"
     template_name = "template/bread_template.xlsx"
 
-    df = pd.read_csv(file_dir + file_name)
+    df = pd.read_csv(file_dir + file_name, encoding='utf8')
 
 
     df.columns = ['pair_number', 'dayofweek', 'date', 'amount', 'month', 'picking_days', 'beneficiary_id', 'beneficiary_name', 'shop_id', 'bakery_chain', 'shop_name']

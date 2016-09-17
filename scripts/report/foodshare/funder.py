@@ -179,7 +179,7 @@ class FoodShareReport(object):
         for stage in self.STAGES + self.META_FILES_PROGRAMME + self.META_FILES_NGO:
             fns = filter(lambda fn: stage in fn, fns_in_programme)
             path = self.ROOT_FOLDER + '/' + ngo + '/'
-            df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf_8') for fn in sorted(fns)])
+            df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf8') for fn in sorted(fns)])
 
         # Clean Donors
 
@@ -191,7 +191,7 @@ class FoodShareReport(object):
     def meta_csv_to_dataframe(self, ngo):
         metas = {}
         for meta in self.META_FILES:
-            df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv',encoding='utf_8')
+            df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv',encoding='utf8')
 
             df = df[df.organisation_id == ngo]
 

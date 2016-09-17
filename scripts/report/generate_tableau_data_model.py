@@ -59,7 +59,7 @@ class TableauReport(object):
     def meta_csv_to_dataframe(self, ngo):
         metas = {}
         for meta in self.META_FILES:
-            df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv')
+            df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv', encoding='utf8')
 
             df = df[df.organisation_id == ngo]
 
@@ -87,8 +87,8 @@ class TableauReport(object):
             fns = filter(lambda fn: stage in fn, fns_in_programme)
             path = self.ROOT_FOLDER + '/' + ngo + '/'
             if len(fns) > 0:
-                df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
-        df_map['map'] = pd.read_csv(self.ROOT_FOLDER + '/' + 'map.csv')                                    
+                df_map[stage] = pd.concat([pd.read_csv(path + fn, encoding='utf8') for fn in fns])
+        df_map['map'] = pd.read_csv(self.ROOT_FOLDER + '/' + 'map.csv', encoding='utf8')
         return df_map
 
     def available_csvs(self, ngo):
@@ -205,7 +205,7 @@ class TableauReport(object):
 
             ## Export to Excel
             file_dir = dest + ngo + '.' + program + '.merge.csv'
-            df_merge.to_csv(file_dir, encoding="utf-8", index=False, date_format='%Y-%m-%d')
+            df_merge.to_csv(file_dir, encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
         #return(df_report.fillna(0))
@@ -230,7 +230,7 @@ class TableauReport(object):
     def dummy_data(self):
         dest='../../../../Tableau/Data/'
         all_merge = [ f for f in listdir(dest) if (isfile(join(dest,f)) & f.endswith(".merge.csv") ) ]
-        df = pd.read_csv(dest + all_merge[1])
+        df = pd.read_csv(dest + all_merge[1], encoding='utf8')
         df_dummy = df
         df_dummy.organisation_id = ["Dummy_NGO_1"] * len(df)
 
@@ -254,7 +254,7 @@ class TableauReport(object):
 
 
 
-        df_dummy.to_csv(dest + "master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        df_dummy.to_csv(dest + "master.merge.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
     def getAllMergeCsv(self):
@@ -265,7 +265,7 @@ class TableauReport(object):
         frame = pd.DataFrame()
         list_ = []
         for file_ in file_list:
-            df = pd.read_csv(file_,index_col=None)
+            df = pd.read_csv(file_,index_col=None, encoding='utf8')
             list_.append(df)
         frame = pd.concat(list_, ignore_index = True)
 
@@ -274,7 +274,7 @@ class TableauReport(object):
         frame['ngo'] = frame.organisation_id.apply(s_ngo)
         frame = frame.drop_duplicates()
 
-        frame.to_csv("tableau/data/master.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        frame.to_csv("tableau/data/master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
     def master_donor_address(self):
@@ -342,7 +342,7 @@ class TableauReport(object):
         unique_loc['formatted_add_eng'] = formatted_address
 
         df = pd.merge(df, unique_loc, how='left', left_on=['location'], right_on=['location'])
-        df.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf-8", index=False, date_format='%Y-%m-%d')
+        df.to_csv("../../../../Tableau/Data/master.merge.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
 if __name__ == '__main__':

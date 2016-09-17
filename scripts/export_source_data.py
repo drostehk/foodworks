@@ -18,6 +18,7 @@ import webbrowser
 '''
 SAVE PROGRESS 
 '''
+
 progress = {}
 
 def update_progress(progress):
@@ -52,9 +53,8 @@ def check_or_set(base, key, status=None):
     update_progress(progress)
 
 '''
-/SAVE PROGRESS
+/SHEET PROCESSING
 '''
-
 
 def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
 
@@ -91,6 +91,7 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
                 ss.beneficiary_sheets_to_csv()
 
         except ValueError as e:
+
             url_base = "https://docs.google.com/spreadsheets/d/"
             webbrowser.open_new(url_base + sheet['id'])
 
@@ -107,6 +108,7 @@ def export_meta_sheets(iteration, **kwargs):
     print_header('{} | {}'.format('META', iteration), color='white')
     meta = MetaToCanonical()
     meta.meta_sheets_to_csv()
+
 
 def export_source_sheets(iteration=1, **kwargs):
 
@@ -167,6 +169,7 @@ def export_source_sheets(iteration=1, **kwargs):
 def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, year, **kwargs):
     try:
         fn(stage, specific_ngo, programme, sheets, iteration, year)
+
     except HTTPError as e:
         print_warning("HTTP " + str(e)[:3], "Google Drive Connection Lost - {} Marbles Dropped".format(iteration))
         export_source_sheets(iteration+1, **kwargs)
@@ -175,6 +178,7 @@ def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, i
         print_warning(str(e), "{} {} has issues - it will be skipped".format(specific_ngo, programme))
         check_or_set(progress[stage][specific_ngo], programme, False)
         export_source_sheets(iteration + 1, **kwargs)
+        raise SystemExit
 
 
 if __name__ == '__main__':
