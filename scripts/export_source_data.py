@@ -102,6 +102,12 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
 
     check_or_set(progress[stage][ngo], programme, True)
 
+
+def export_meta_sheets(iteration, **kwargs):
+    print_header('{} | {}'.format('META', iteration), color='white')
+    meta = MetaToCanonical()
+    meta.meta_sheets_to_csv()
+
 def export_source_sheets(iteration=1, **kwargs):
 
     SKIP_NGO = ['NLPRA']
@@ -154,10 +160,8 @@ def export_source_sheets(iteration=1, **kwargs):
             for programme, sheets in programmes.iteritems():
                 retry_export_on_failed_attempt(iterate_over_sheets, stage, specific_ngo, programme, sheets, iteration, YEAR, **kwargs)
 
-    # Export Meta Data
-    print_header('{} | {}'.format('META', iteration), color='white')
-    meta = MetaToCanonical()
-    meta.meta_sheets_to_csv()
+    if iteration == 1:
+        export_meta_sheets(iteration)
 
 
 def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, iteration, year, **kwargs):
