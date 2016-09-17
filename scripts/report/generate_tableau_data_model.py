@@ -82,12 +82,13 @@ class TableauReport(object):
         fns_in_programme = filter(lambda fn: programme in fn, fns)
 
         df_map = {}
-
+        
         for stage in self.STAGES + self.META_FILES_PROGRAMME + self.META_FILES_NGO:
             fns = filter(lambda fn: stage in fn, fns_in_programme)
             path = self.ROOT_FOLDER + '/' + ngo + '/'
-            df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
-
+            if len(fns) > 0:
+                df_map[stage] = pd.concat([pd.read_csv(path + fn) for fn in fns])
+        df_map['map'] = pd.read_csv(self.ROOT_FOLDER + '/' + 'map.csv')                                    
         return df_map
 
     def available_csvs(self, ngo):

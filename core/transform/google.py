@@ -120,7 +120,7 @@ class SheetToCanonical(CanonicalTransformer):
 
             try:
                 df = self.join_if_existing_csv(df, csv_dest)
-
+                self.df_to_csv(df, csv_dest)
             except ValueError as e:
                 if str(e) == 'Plan shapes are not aligned':
                     aproach = '''Inspect the donor cover sheet - are there any
@@ -128,8 +128,7 @@ class SheetToCanonical(CanonicalTransformer):
                     of the regular columns.'''
                     print_data_error('SHEETS MISALIGNMENT', str(e),aproach)
             return False
-
-            self.df_to_csv(df, csv_dest)
+            #self.df_to_csv(df, csv_dest)
 
         else:
             raise NotImplementedError
