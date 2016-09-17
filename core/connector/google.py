@@ -251,6 +251,7 @@ class GoogleSourceSheet(Spreadsheet):
             cover = pd.DataFrame(values)
             cover.columns = cover.iloc[0]
             cover = cover.ix[1:]
+            print_status("Parsing", 'Cover Sheet  | {:>3} rows'.format(len(cover)), 'XX')
             return cover
 
 
@@ -269,7 +270,6 @@ class GoogleSourceSheet(Spreadsheet):
         self.create_translations_keys(terms)
         self.create_mappings_keys(terms)
 
-        print('\n')
         return self.df
 
     def parse_collection_weeksheet(self, ws):
@@ -328,7 +328,6 @@ class GoogleSourceSheet(Spreadsheet):
         # DEVELOPER
         for ws in wss:
             self.parse_processing_weeksheet(ws)
-        print('\n')
         return self.df
 
     def parse_processing_weeksheet(self, ws):
@@ -366,7 +365,6 @@ class GoogleSourceSheet(Spreadsheet):
         self.df.datetime = pd.to_datetime(self.df.datetime)
         self.df.columns = self.export_cols
 
-        print('\n')
         return self.df
 
     def parse_dist_weeksheet(self, ws):
@@ -470,6 +468,3 @@ def _is_week_number(title):
         return False
     else:
         return True
-
-def stop():
-    import pdb; pdb.set_trace()

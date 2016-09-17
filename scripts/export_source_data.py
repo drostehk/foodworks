@@ -101,6 +101,8 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
                 print_error('INVALID DATA VALUE', ['Numbers, e.g. 1, 23.23'])
             raise
 
+        print('')
+
     check_or_set(progress[stage][ngo], programme, True)
 
 

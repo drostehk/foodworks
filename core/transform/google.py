@@ -27,8 +27,6 @@ class CanonicalTransformer(object):
         pass
 
     def to_csv(self, df):
-        # fn = self.datadir + '.csv'
-        # df.to_csv()
         pass
 
 
