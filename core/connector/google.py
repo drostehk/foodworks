@@ -312,11 +312,11 @@ class GoogleSourceSheet(Spreadsheet):
                     food_volume = row[self.other_volume][idx]
                     donor_idx = (self.df.donor == donor)
                     date_idx = (self.df.datetime == timestamp)
-                    food_idx = food_type.strip()
-                    if food_idx in self.df and not any(self.df.ix[donor_idx & date_idx, food_idx].isnull()):
-                        self.df.ix[(donor_idx & date_idx).cumsum() == 1, food_idx] += float(food_volume)
+                    food_label = food_type.strip()
+                    if food_label in self.df and not any(self.df.ix[donor_idx & date_idx, food_label].isnull()):
+                        self.df.ix[(donor_idx & date_idx).tolist().index(True), food_label] += float(food_volume)
                     else:
-                        self.df.ix[(donor_idx & date_idx).cumsum() == 1, food_idx] = float(food_volume)
+                        self.df.ix[(donor_idx & date_idx).tolist().index(True), food_label] = float(food_volume)
 
         self.df.ix[:, self.schema] = self.df[self.schema].replace('',np.nan).astype(np.float)
 
