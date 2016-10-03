@@ -1,3 +1,4 @@
+from __future__ import unicode_literals, print_function
 from termcolor import colored, cprint
 
 def print_error(error, expected, value=None):

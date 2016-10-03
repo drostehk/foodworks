@@ -39,7 +39,7 @@ class FoodLinkAmenitiesReport(FoodLinkDonorReport):
 
     def compose_layout(self, x, y, weeks, opts):
         layout = go.Layout(
-            title='<b>{name}</b><br>{year} Weekly Amenities Donation in KG '.format(**opts),
+            title= u'<b>{name}</b><br>{year} Weekly Amenities Donation in KG '.format(**opts),
             titlefont=dict(
                 size=28
             ),

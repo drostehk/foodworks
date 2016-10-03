@@ -258,7 +258,7 @@ class FoodLinkDonorReport(object):
     def compose_layout(self, x, y, weeks, opts):
         x_title = """<b>Equivalent of {meals} meals provided in {month} {year}</b><br>(Week {week_s} - Week {week_e})""".format(**opts)
         layout = go.Layout(
-            title='<b>{name}</b><br>{year} Weekly Food Donation in KG '.format(**opts),
+            title=u'<b>{name}</b><br>{year} Weekly Food Donation in KG '.format(**opts),
             titlefont = dict(
                 size=28
                 ),
