@@ -142,6 +142,26 @@ class TableauReport(object):
         return result
 
 
+    def genTableauFoodLinkCsv(self, isFoodwork = False):
+        fn_list = ["Amenities", "General", "ECF Van 01", "ECF Van 02", "ECF Van 03"]
+        result_df_list = []
+        for fn in fn_list:
+            coll_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.2016.collection - " + fn + ".csv", encoding='utf8')
+            don_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.donors - " + fn + ".csv", encoding='utf8')
+            for col in coll_df.columns[4:]:
+                coll_df[col].fillna(0, inplace=True)
+                coll_df[col] = coll_df[col].astype(float)
+
+
+            coll_df = pd.melt(coll_df, id_vars=coll_df.columns[0:4].values.tolist(), value_vars=coll_df.columns[4:].values.tolist(), var_name='food_type', value_name='value')
+            coll_df = coll_df[coll_df.value != 0]
+            result_df_list.append(pd.merge(coll_df, don_df, how = 'left', left_on='donor', right_on='id'))
+        
+        print("Exoirting..."+"FoodLink")
+
+        pd.concat(result_df_list).to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+
+
 
     def genTableauCsv(self, ngo, program, isFoodwork = False):
         print('Exporting...' + ngo + ' - ' + program)
@@ -256,6 +276,21 @@ class TableauReport(object):
 
         df_dummy.to_csv(dest + "master.merge.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
+    def getAllFoodLinkMergeCsv(self):
+        file_list = (glob.glob('tableau/data/*.FoodLink.csv'))
+
+        print('Merging ' + str(len(file_list)) + ' files...')
+
+        frame = pd.DataFrame()
+        list_ = []
+        for file_ in file_list:
+            df = pd.read_csv(file_,index_col=None, encoding='utf8')
+            list_.append(df)
+        frame = pd.concat(list_, ignore_index = True)
+
+        frame.to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+
+
 
     def getAllMergeCsv(self):
         file_list = (glob.glob('tableau/data/*.merge.csv'))
@@ -346,5 +381,6 @@ class TableauReport(object):
 
 
 if __name__ == '__main__':
-    generate_all_tableau_csv()
-    getAllMergeCsv()
+    #generate_all_tableau_csv()
+    #getAllMergeCsv()
+    genTableauFoodLinkCsv()

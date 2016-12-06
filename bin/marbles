@@ -277,7 +277,7 @@ class MarbleControl(object):
         t = TableauReport(skip=self.args['--skip'])
         t.generate_all_tableau_csv()
         t.getAllMergeCsv()
-
+        t.genTableauFoodLinkCsv()
 
     def confirm_structure(self):
         from core.drive import generate_structure
