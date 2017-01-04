@@ -34,7 +34,7 @@ class FoodLinkDonorReport(object):
         super(FoodLinkDonorReport, self).__init__()
         
         self.ngo = ngo
-        self.meal_weight = 0.585
+        self.meal_weight = 0.42
         self.pickup_type = 'food'
 
         # Dates

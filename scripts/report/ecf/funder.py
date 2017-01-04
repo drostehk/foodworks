@@ -99,7 +99,7 @@ class ECFReport(object):
             for k, v in kwargs.iteritems():
                 setattr(self, k, v)
 
-        self.meal_weight = 0.585
+        self.meal_weight = 0.42
     
     def generate_all_reports(self, year=datetime.now().year, iteration=1):
 
