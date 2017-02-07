@@ -3,6 +3,7 @@
 from __future__ import (absolute_import, division, print_function)
 
 import plotly.graph_objs as go
+import pandas as pd
 
 try:
     from donors import FoodLinkDonorReport
@@ -36,6 +37,11 @@ class FoodLinkAmenitiesReport(FoodLinkDonorReport):
     # PRIVATE
 
     # Data
+
+    def get_efficiency(self, df_):
+        # TODO : UGLY HACK
+        df_['efficiency'] = 100
+        return df_['efficiency']
 
     def compose_layout(self, x, y, weeks, opts):
         layout = go.Layout(
