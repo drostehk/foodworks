@@ -172,14 +172,14 @@ class FoodLinkDonorReport(object):
 
         df = df[df.index < self.end_date]
 
-        df_m = df.groupby('donor').resample('M', 'sum', label='right').sum(1).reset_index()
+        df_m = df.groupby('donor').resample('M', label='right').sum().sum(1).reset_index()
 
         df_m = df_m.set_index('donor').join(efficiency).join(names)
         if df_m['efficiency'].isnull().any():
             raise ValueError(", ".join(df_m[df_m['efficiency'].isnull()].name.values) + " don't have their efficiency set.")
         df_m['value'] =  df_m[0] * self.get_efficiency(df_m) / 100
 
-        df_w = df.groupby('donor').resample('W-MON', 'sum', label='left').sum(1).reset_index()
+        df_w = df.groupby('donor').resample('W-MON', label='left').sum().sum(1).reset_index()
         df_w = df_w.set_index('donor').join(efficiency).join(names)
         df_w['value'] =  df_w[0] * self.get_efficiency(df_w) / 100
         df_w = self.slice_reporting_month(df_w)
