@@ -47,6 +47,7 @@ class TableauReport(object):
 
             # Selective processing of NGOS
             if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
+            #if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink', 'Evergreen', 'PCSS', 'SWA', 'WSA'] or ngo in self.skip:
                 continue
             else:
                 for programme, sheets in programmes.iteritems():
@@ -56,12 +57,13 @@ class TableauReport(object):
                     else:
                         self.genTableauCsv(ngo, programme)
 
-    def meta_csv_to_dataframe(self, ngo):
+    def meta_csv_to_dataframe(self, ngo, programme):
         metas = {}
         for meta in self.META_FILES:
             df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv', encoding='utf8')
 
             df = df[df.organisation_id == ngo]
+            df = df[df.programme == programme]
 
             if meta == 'map':
                 df = df[['category', 'canonical']]
@@ -180,7 +182,7 @@ class TableauReport(object):
         df = df.drop_duplicates()
         #print(df)
         #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
-        df_map = self.meta_csv_to_dataframe(ngo)['map']
+        df_map = self.meta_csv_to_dataframe(ngo, program)['map']
         df_donors = self.generate_ngo_dataframe(ngo, program)['donors']
 
         ## Collection
