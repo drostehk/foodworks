@@ -62,8 +62,16 @@ class TableauReport(object):
         for meta in self.META_FILES:
             df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv', encoding='utf8')
 
+            #print("======================")
             df = df[df.organisation_id == ngo]
+            #print(df.shape)
+
             df = df[df.programme == programme]
+            #print(df.shape)
+
+            #print(ngo)
+            #print(programme)
+            #print("======================")
 
             if meta == 'map':
                 df = df[['category', 'canonical']]
@@ -227,6 +235,13 @@ class TableauReport(object):
 
             ## Export to Excel
             file_dir = dest + ngo + '.' + program + '.merge.csv'
+
+            #add row id for bug tracking
+            #df_merge['row_id'] = range(1, len(df_merge) + 1)
+
+            if program != "General":
+                df_merge = df_merge[df_merge['programme'] == program]
+
             df_merge.to_csv(file_dir, encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
@@ -303,6 +318,11 @@ class TableauReport(object):
         list_ = []
         for file_ in file_list:
             df = pd.read_csv(file_,index_col=None, encoding='utf8')
+            #print("================================================")
+            #print(file_)
+            #print(df.shape)
+            #print("================================================")
+            #df['row_id'] = range(1, len(df) + 1)
             list_.append(df)
         frame = pd.concat(list_, ignore_index = True)
 
@@ -310,6 +330,10 @@ class TableauReport(object):
         s_ngo = lambda x: x.split("-")[0]
         frame['ngo'] = frame.organisation_id.apply(s_ngo)
         frame = frame.drop_duplicates()
+
+        #print("================================================")
+        #print(frame.shape)
+        #print("================================================")
 
         frame.to_csv("tableau/data/master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
@@ -385,4 +409,5 @@ class TableauReport(object):
 if __name__ == '__main__':
     #generate_all_tableau_csv()
     #getAllMergeCsv()
-    genTableauFoodLinkCsv()
+    #genTableauFoodLinkCsv()
+    print()
