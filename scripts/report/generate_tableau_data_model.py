@@ -236,11 +236,14 @@ class TableauReport(object):
             ## Export to Excel
             file_dir = dest + ngo + '.' + program + '.merge.csv'
 
-            #add row id for bug tracking
-            #df_merge['row_id'] = range(1, len(df_merge) + 1)
-
             if program != "General":
                 df_merge = df_merge[df_merge['programme'] == program]
+
+            df_merge = df_merge.drop_duplicates()
+
+            #add row id for bug tracking
+            df_merge['row_id'] = range(1, len(df_merge) + 1)
+
 
             df_merge.to_csv(file_dir, encoding="utf8", index=False, date_format='%Y-%m-%d')
 
