@@ -43,19 +43,35 @@ class TableauReport(object):
 
         from core.drive import generate_structure
 
+        str_FAIL = '\033[91m'
+        str_ENDC = '\033[0m'
+        str_BOLD = '\033[1m'
+
         for ngo, programmes in generate_structure()['collection'].iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
+            if ngo in ['ActionHealth', 'NLPRA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
             #if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink', 'Evergreen', 'PCSS', 'SWA', 'WSA'] or ngo in self.skip:
                 continue
             else:
                 for programme, sheets in programmes.iteritems():
                     if ngo == 'PSC':
                         if programme in ['KC', 'TM', 'WTS', 'YTM']:
-                            self.genTableauCsv(ngo, programme)
+                            try:
+                                self.genTableauCsv(ngo, programme)
+                            except:
+                                print(str_FAIL + str_BOLD + "*** Error... " + ngo + " - " + programme + str_ENDC)
+                                pass
                     else:
-                        self.genTableauCsv(ngo, programme)
+                        try:
+                            self.genTableauCsv(ngo, programme)
+                        except:
+                                print(str_FAIL + str_BOLD + "*** Error..." + ngo + " - " + programme + str_ENDC)
+                                pass
+        print("")
+        print(">>>NGOs export completed<<<")
+        print("")
+
 
     def meta_csv_to_dataframe(self, ngo, programme):
         metas = {}
@@ -155,22 +171,25 @@ class TableauReport(object):
     def genTableauFoodLinkCsv(self, isFoodwork = False):
         fn_list = ["Amenities", "General", "ECF Van 01", "ECF Van 02", "ECF Van 03"]
         result_df_list = []
-        for fn in fn_list:
-            coll_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.2016.collection - " + fn + ".csv", encoding='utf8')
-            don_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.donors - " + fn + ".csv", encoding='utf8')
-            for col in coll_df.columns[4:]:
-                coll_df[col].fillna(0, inplace=True)
-                coll_df[col] = coll_df[col].astype(float)
+        try:
+            for fn in fn_list:
+
+                coll_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.2016.collection - " + fn + ".csv", encoding='utf8')
+                don_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.donors - " + fn + ".csv", encoding='utf8')
+                for col in coll_df.columns[4:]:
+                    coll_df[col].fillna(0, inplace=True)
+                    coll_df[col] = coll_df[col].astype(float)
 
 
-            coll_df = pd.melt(coll_df, id_vars=coll_df.columns[0:4].values.tolist(), value_vars=coll_df.columns[4:].values.tolist(), var_name='food_type', value_name='value')
-            coll_df = coll_df[coll_df.value != 0]
-            result_df_list.append(pd.merge(coll_df, don_df, how = 'left', left_on='donor', right_on='id'))
-        
-        print("Exoirting..."+"FoodLink")
+                coll_df = pd.melt(coll_df, id_vars=coll_df.columns[0:4].values.tolist(), value_vars=coll_df.columns[4:].values.tolist(), var_name='food_type', value_name='value')
+                coll_df = coll_df[coll_df.value != 0]
+                result_df_list.append(pd.merge(coll_df, don_df, how = 'left', left_on='donor', right_on='id'))
 
-        pd.concat(result_df_list).to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+            print("Exoirting..."+"FoodLink")
 
+            pd.concat(result_df_list).to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+        except:
+            pass
 
 
     def genTableauCsv(self, ngo, program, isFoodwork = False):
