@@ -1,5 +1,14 @@
 <head>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-beta1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+    <script type="text/javascript" src="https://raw.githubusercontent.com/inexorabletash/polyfill/master/typedarray.js"></script>
+    <script type="text/javascript">
+    Function.prototype.bind = Function.prototype.bind || function (thisp) {{
+          var fn = this;
+          return function () {{
+            return fn.apply(thisp, arguments);
+          }};
+        }};
+    </script>
     <script type="text/javascript">
         {plotly}
     </script>
@@ -15,11 +24,14 @@
     g.g-xtitle {{
         transform: translate(0px, 0px)
     }}
+
+    g.annotation-text-g .bg {{ display: none; }}
     </style>
 </head>
 <body>
     <script type="text/javascript">
         (function() {{
+
             var d3 = Plotly.d3;
             var WIDTH_IN_PERCENT_OF_PARENT = 100,
             HEIGHT_IN_PERCENT_OF_PARENT = 100;
