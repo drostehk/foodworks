@@ -48,3 +48,7 @@ where `NGO` is the NGO id, e.g. `TSWN` or `FoodLink`.
 ### Add marbles to path
 
 `pathadd $HOME/code/foodworks/bin`
+
+### Symlink Reports
+
+ln -s ~/m@droste.hk/FoodWorks/Reports/ data/ 
