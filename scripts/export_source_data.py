@@ -83,10 +83,12 @@ def iterate_over_sheets(stage, ngo, programme, sheets, iteration, year=None):
                 ss.donors_sheets_to_csv()
 
             elif stage == 'processing':
-                ss.finance_sheets_to_csv()
-                ss.processing_sheets_to_csv()
+                pass
+                # NOTE : WE NO LONGER SUPPORT PROCESSING
+                # ss.finance_sheets_to_csv()
+                # ss.processing_sheets_to_csv()
 
-            elif stage == 'distribution':
+            elif stage == 'distribution' and ngo == 'FoodLink':
                 ss.distribution_sheets_to_csv()
                 ss.beneficiary_sheets_to_csv()
 
