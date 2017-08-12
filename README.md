@@ -144,3 +144,17 @@ There are three types of data that we have in our system, all hosted on Google D
 1. Processed Data which has been taken from the Sourcing system and / or Raw Data in order to generate `RECORDS` from which reports can be generated.
 
 Files handed over by NGOs should only ever be dropped into `RAW`, the sheets in `Source` should copied from the Master Template, and the CSVs in `RECORDS` should only ever be generated programatically.  
+
+## Installation
+
+### Setup Environment
+
+`conda env create -f environment.yml`
+
+### Add marbles to path
+
+`pathadd $HOME/code/foodworks/bin`
+
+### Symlink Reports
+
+ln -s ~/m@droste.hk/FoodWorks/Reports/ data/ 
