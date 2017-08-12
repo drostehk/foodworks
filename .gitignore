@@ -74,3 +74,4 @@ meta.json
 tableau/
 
 .ipynb_checkpoints/
+.DS_Store
