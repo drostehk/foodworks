@@ -43,25 +43,51 @@ class TableauReport(object):
 
         from core.drive import generate_structure
 
+        str_FAIL = '\033[91m'
+        str_ENDC = '\033[0m'
+        str_BOLD = '\033[1m'
+
         for ngo, programmes in generate_structure()['collection'].iteritems():
 
             # Selective processing of NGOS
-            if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
+            if ngo in ['ActionHealth', 'NLPRA', 'FoodLink (Beneficiary)', 'FoodLink'] or ngo in self.skip:
+            #if ngo in ['ActionHealth', 'NLPRA', 'SWA', 'FoodLink (Beneficiary)', 'FoodLink', 'Evergreen', 'PCSS', 'SWA', 'WSA'] or ngo in self.skip:
                 continue
             else:
                 for programme, sheets in programmes.iteritems():
                     if ngo == 'PSC':
                         if programme in ['KC', 'TM', 'WTS', 'YTM']:
-                            self.genTableauCsv(ngo, programme)
+                            try:
+                                self.genTableauCsv(ngo, programme)
+                            except:
+                                print(str_FAIL + str_BOLD + "*** Error... " + ngo + " - " + programme + str_ENDC)
+                                pass
                     else:
-                        self.genTableauCsv(ngo, programme)
+                        try:
+                            self.genTableauCsv(ngo, programme)
+                        except:
+                                print(str_FAIL + str_BOLD + "*** Error..." + ngo + " - " + programme + str_ENDC)
+                                pass
+        print("")
+        print(">>>NGOs export completed<<<")
+        print("")
 
-    def meta_csv_to_dataframe(self, ngo):
+
+    def meta_csv_to_dataframe(self, ngo, programme):
         metas = {}
         for meta in self.META_FILES:
             df = pd.read_csv(self.ROOT_FOLDER + meta + '.csv', encoding='utf8')
 
+            #print("======================")
             df = df[df.organisation_id == ngo]
+            #print(df.shape)
+
+            df = df[df.programme == programme]
+            #print(df.shape)
+
+            #print(ngo)
+            #print(programme)
+            #print("======================")
 
             if meta == 'map':
                 df = df[['category', 'canonical']]
@@ -145,22 +171,25 @@ class TableauReport(object):
     def genTableauFoodLinkCsv(self, isFoodwork = False):
         fn_list = ["Amenities", "General", "ECF Van 01", "ECF Van 02", "ECF Van 03"]
         result_df_list = []
-        for fn in fn_list:
-            coll_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.2016.collection - " + fn + ".csv", encoding='utf8')
-            don_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.donors - " + fn + ".csv", encoding='utf8')
-            for col in coll_df.columns[4:]:
-                coll_df[col].fillna(0, inplace=True)
-                coll_df[col] = coll_df[col].astype(float)
+        try:
+            for fn in fn_list:
+
+                coll_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.2016.collection - " + fn + ".csv", encoding='utf8')
+                don_df = pd.read_csv(self.ROOT_FOLDER + "FoodLink/FoodLink.donors - " + fn + ".csv", encoding='utf8')
+                for col in coll_df.columns[4:]:
+                    coll_df[col].fillna(0, inplace=True)
+                    coll_df[col] = coll_df[col].astype(float)
 
 
-            coll_df = pd.melt(coll_df, id_vars=coll_df.columns[0:4].values.tolist(), value_vars=coll_df.columns[4:].values.tolist(), var_name='food_type', value_name='value')
-            coll_df = coll_df[coll_df.value != 0]
-            result_df_list.append(pd.merge(coll_df, don_df, how = 'left', left_on='donor', right_on='id'))
-        
-        print("Exoirting..."+"FoodLink")
+                coll_df = pd.melt(coll_df, id_vars=coll_df.columns[0:4].values.tolist(), value_vars=coll_df.columns[4:].values.tolist(), var_name='food_type', value_name='value')
+                coll_df = coll_df[coll_df.value != 0]
+                result_df_list.append(pd.merge(coll_df, don_df, how = 'left', left_on='donor', right_on='id'))
 
-        pd.concat(result_df_list).to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+            print("Exoirting..."+"FoodLink")
 
+            pd.concat(result_df_list).to_csv("tableau/data/FoodLink.master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
+        except:
+            pass
 
 
     def genTableauCsv(self, ngo, program, isFoodwork = False):
@@ -180,7 +209,7 @@ class TableauReport(object):
         df = df.drop_duplicates()
         #print(df)
         #df_map = generate_ngo_dataframe('PCSS', 'General')['map']
-        df_map = self.meta_csv_to_dataframe(ngo)['map']
+        df_map = self.meta_csv_to_dataframe(ngo, program)['map']
         df_donors = self.generate_ngo_dataframe(ngo, program)['donors']
 
         ## Collection
@@ -225,6 +254,16 @@ class TableauReport(object):
 
             ## Export to Excel
             file_dir = dest + ngo + '.' + program + '.merge.csv'
+
+            if program != "General":
+                df_merge = df_merge[df_merge['programme'] == program]
+
+            df_merge = df_merge.drop_duplicates()
+
+            #add row id for bug tracking
+            df_merge['row_id'] = range(1, len(df_merge) + 1)
+
+
             df_merge.to_csv(file_dir, encoding="utf8", index=False, date_format='%Y-%m-%d')
 
 
@@ -301,6 +340,11 @@ class TableauReport(object):
         list_ = []
         for file_ in file_list:
             df = pd.read_csv(file_,index_col=None, encoding='utf8')
+            #print("================================================")
+            #print(file_)
+            #print(df.shape)
+            #print("================================================")
+            #df['row_id'] = range(1, len(df) + 1)
             list_.append(df)
         frame = pd.concat(list_, ignore_index = True)
 
@@ -308,6 +352,10 @@ class TableauReport(object):
         s_ngo = lambda x: x.split("-")[0]
         frame['ngo'] = frame.organisation_id.apply(s_ngo)
         frame = frame.drop_duplicates()
+
+        #print("================================================")
+        #print(frame.shape)
+        #print("================================================")
 
         frame.to_csv("tableau/data/master.csv", encoding="utf8", index=False, date_format='%Y-%m-%d')
 
@@ -383,4 +431,5 @@ class TableauReport(object):
 if __name__ == '__main__':
     #generate_all_tableau_csv()
     #getAllMergeCsv()
-    genTableauFoodLinkCsv()
+    #genTableauFoodLinkCsv()
+    print()
