@@ -183,7 +183,7 @@ def retry_export_on_failed_attempt(fn, stage, specific_ngo, programme, sheets, i
     except Exception as e:
         traceback.print_exc()
 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         print_warning(str(e), "{} {} has issues - it will be skipped".format(specific_ngo, programme))
         check_or_set(progress[stage][specific_ngo], programme, False)
         export_source_sheets(iteration + 1, **kwargs)
