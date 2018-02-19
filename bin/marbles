@@ -10,8 +10,8 @@ Usage:
                  [--year=YEAR] [--month=MONTH]
                  [--skipstages=PROCESS]... [--skip=NGO]...
   marbles tableau
-  marbles filter
-  marbles --version
+  marbles filter --year=YEAR
+  marbles --version`
   marbles --help
 
 Arguments:
@@ -38,6 +38,8 @@ Examples:
   marbles export --resume   # Skip Reset, resume export
   marbles export --resume --for PSC
                             # Skip Reset, only export data for PSC
+  marbles filter --year=2018 
+                            # Filter structure.json to only store sheets for 2018  
   marbles list structure    # Print out the saved list of Google Drive Source sheets
   marbles list progress     # Print out the status of exported NGO Programme source sheets
   marbles reset all         # Run if you want to delete previously exported data, reset export progress
@@ -61,6 +63,7 @@ from functools import wraps
 import json
 import collections
 import os
+from datetime import datetime
 
 # Decorator
 def print_head(func):
@@ -291,8 +294,9 @@ class MarbleControl(object):
             for ngo, programmes in ngos.iteritems():
                 for programme, sheets in programmes.iteritems():
                     for sheet in sheets:
-                     if str(2017) in sheet['name']:
-                         d[stage][ngo][programme] = [sheet]
+                        year = self.args.get('--year', datetime.now().year)
+                        if str(year) in sheet['name']:
+                            d[stage][ngo][programme] = [sheet]
 
         with open('structure.json', 'wb') as fn:    
 
