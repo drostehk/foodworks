@@ -90,15 +90,13 @@ class FoodLinkDonorReport(object):
             print("\n>>>> {}".format(donor.upper()))
 
             w_totals = df_w.loc[[donor],'value'].fillna(0).astype(int).tolist()
+
             try:
                 w_labels = ['WK'+str(wk) for wk in df_w.loc[donor,'datetime'].dt.week.tolist()]
             except AttributeError:
                 w_totals = df_w.loc[donor,['value']].astype(int).values.tolist()
                 w_labels = ['WK'+str(wk) for wk in df_w.loc[donor,['datetime']].dt.week.tolist()]
             
-            # print(w_totals)
-            # print(w_labels)
-
             m_totals = df_m.loc[[donor],'value'].fillna(0).astype(int).tolist()
             try:
                 m_labels = df_m.loc[donor,'datetime'].dt.strftime('%b').str.upper().tolist()
@@ -106,11 +104,7 @@ class FoodLinkDonorReport(object):
                 m_totals = df_m.loc[donor,['value']].astype(int).values.tolist()
                 m_labels = df_m.loc[donor,['datetime']].dt.strftime('%b').str.upper().tolist()
 
-            # print(m_totals)
-            # print(m_labels)
-
             data, x, y = self.compose_data(w_totals, w_labels ,m_totals, m_labels)
-            # print(data)
             print("{}{}".format('LABELS:', x))
             print("{}{}\n".format('VALUES:', y))
 
@@ -351,7 +345,7 @@ class FoodLinkDonorReport(object):
         return int(ceil(adjusted_dom/7.0))
 
     def slice_reporting_month(self, df):
-        mask = (df.datetime > self.start_date) & (df.datetime <= self.end_date)
+        mask = (df.datetime >= self.start_date) & (df.datetime <= self.end_date)
         return df[mask]
 
 
