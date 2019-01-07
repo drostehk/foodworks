@@ -165,4 +165,8 @@ ln -s /Users/daisytam/Google\ Drive/FoodWorks/Reports data/Reports
 
 ### wkhtmltopdf
 
+```bash
+sudo dnf install wkhtmltopdf
+```
+
 Download and install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html)
