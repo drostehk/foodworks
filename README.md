@@ -104,19 +104,6 @@ marbles reset export      # Removes all exported dat
 ```
 
 
-### Setup Notes
-
-1. Install the python dependencies as described in `environment.yml`
-
-2. Link up the `Report` directory, e.g. from the root
-
-```bash
-ln -s /Users/daisytam/Google\ Drive/FoodWorks/Reports data/Reports
-```
-
-3. Download and install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html)
-
-
 # Development
 
 ## Key Scripts
@@ -147,14 +134,36 @@ Files handed over by NGOs should only ever be dropped into `RAW`, the sheets in 
 
 ## Installation
 
+### Additional Dependencies (Fedora Only)
+
+`sudo dnf install readline readline-devel python2-devel`
+
 ### Setup Environment
 
 `conda env create -f environment.yml`
+`conda activate foodworks`
+`pip install -r requirements.txt`
 
 ### Add marbles to path
 
 `pathadd $HOME/code/foodworks/bin`
 
+### Authenticate with your Google Account
+
+Copy paste the `get_credentials` function from [core/drive.py#L38](https://github.com/drostehk/foodworks/blob/master/core/drive.py#L38) and run `get_credentials()` in a python session to generate credentials.
+
 ### Symlink Reports
 
-ln -s ~/m@droste.hk/FoodWorks/Reports/ data/ 
+Link up the `Report` directory, e.g. from the root
+
+`ln -s ~/m@droste.hk/FoodWorks/Reports/ data/`
+
+or
+
+```bash
+ln -s /Users/daisytam/Google\ Drive/FoodWorks/Reports data/Reports
+```
+
+### wkhtmltopdf
+
+Download and install [wkhtmltopdf](http://wkhtmltopdf.org/downloads.html)
