@@ -142,7 +142,6 @@ Files handed over by NGOs should only ever be dropped into `RAW`, the sheets in 
 
 `conda env create -f environment.yml`
 `conda activate foodworks`
-`pip install -r requirements.txt`
 
 ### Add marbles to path
 
