@@ -48,8 +48,8 @@ class FoodLinkDonorReport(object):
         # self.MONTH_NAME = 'April'
         # self.MONTH_NUM = 5
         # self.MONTH_NAME = 'May'
-        # self.MONTH_NUM = 6
-        # self.MONTH_NAME = 'June'
+        # self.MONTH_NUM = 11
+        # self.MONTH_NAME = 'November'
 
         self.month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         self.month_styles = ['rgba(204,204,204,1)']
@@ -74,7 +74,7 @@ class FoodLinkDonorReport(object):
 
         self.html_to_pdf_process = [
             "wkhtmltopdf", "--debug-javascript", "--orientation", "Landscape",
-            "-T", "5", "-B", "5", "-L", "5", "-R", "5", self.fn_html,
+            "-T", "5", "-B", "3", "-L", "5", "-R", "5", self.fn_html,
             self.path_pdf + self.fn_pdf ] 
 
 
@@ -113,7 +113,7 @@ class FoodLinkDonorReport(object):
             opts = self.opts(df_w, donor, m_total)
             
             layout = self.compose_layout(x, y, w_count, opts)
-            
+
             fig = go.Figure(data=data, layout=layout)
             html = self.new_iplot(fig)
             
@@ -273,12 +273,12 @@ class FoodLinkDonorReport(object):
             ),
             showlegend=False,
             autosize=True,
-                width= 1340,
+                width=1340,
                 height=920,
                 margin=go.Margin(
                     l=0,
                     r=0,
-                    b=100,
+                    b=120,
                     t=80,
                     pad=100
                 ),

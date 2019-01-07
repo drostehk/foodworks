@@ -155,7 +155,9 @@ Copy paste the `get_credentials` function from [core/drive.py#L38](https://githu
 
 Link up the `Report` directory, e.g. from the root
 
-`ln -s ~/m@droste.hk/FoodWorks/Reports/ data/`
+`mkdir data`
+`ln -s ~/m@droste.hk/FoodWorks/CanonicalData data/Canonical`
+`ln -s ~/m@droste.hk/FoodWorks/Reports/ data/Reports`
 
 or
 
